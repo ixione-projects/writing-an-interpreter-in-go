@@ -10,56 +10,92 @@ type Lexer struct {
 	input   string
 	start   int
 	current int
-	ch      byte
+
+	ch byte
+
+	tokens []token.Token
 }
 
 func New(input string) *Lexer {
-	return &Lexer{input: input}
+	return &Lexer{input: input, tokens: []token.Token{}}
 }
 
-func (l *Lexer) NextToken() *token.Token {
-	l.start = l.current
+func (l *Lexer) Token(index int) token.Token {
+	if len(l.tokens) < index+1 {
+		l.ensure(index + 1 - len(l.tokens))
+	}
+	return l.tokens[index]
+}
+
+func (l *Lexer) ensure(n int) {
+	tokens := []token.Token{}
+	for range n {
+		tokens = append(tokens, l.NextToken())
+	}
+	l.tokens = append(l.tokens, tokens...)
+}
+
+func (l *Lexer) NextToken() token.Token {
+	if len(l.tokens) > 0 {
+		tok := l.tokens[0]
+		l.tokens = l.tokens[1:]
+		return tok
+	}
 
 	for !l.isEOF() {
-		l.ch = l.peek0()
+		l.start = l.current
 
+		l.ch = l.peek0()
 		switch l.ch {
 		case ' ', '\t', '\r', '\n':
 			l.skip(' ', '\t', '\r', '\n')
-			l.start = l.current
 		case '=':
+			l.next()
 			if l.match('=') {
 				return l.emit(token.EQ)
 			}
 			return l.emit(token.ASSIGN)
 		case '+':
+			l.next()
 			return l.emit(token.PLUS)
 		case '-':
+			l.next()
 			return l.emit(token.MINUS)
 		case '!':
+			l.next()
 			if l.match('=') {
 				return l.emit(token.NOT_EQ)
 			}
 			return l.emit(token.BANG)
 		case '/':
+			l.next()
 			return l.emit(token.SLASH)
 		case '*':
+			l.next()
 			return l.emit(token.STAR)
 		case '<':
+			l.next()
 			return l.emit(token.LT)
 		case '>':
+			l.next()
 			return l.emit(token.GT)
 		case ';':
+			l.next()
 			return l.emit(token.SEMI)
 		case ',':
+			l.next()
 			return l.emit(token.COMMA)
 		case '(':
+			l.next()
 			return l.emit(token.LPAREN)
 		case ')':
+			l.next()
 			return l.emit(token.RPAREN)
 		case '{':
+			l.next()
 			return l.emit(token.LBRACE)
 		case '}':
+			l.next()
 			return l.emit(token.RBRACE)
 		default:
 			if isAlpha(l.ch) {
@@ -72,28 +108,29 @@ func (l *Lexer) NextToken() *token.Token {
 		}
 	}
 
+	l.start = l.current
 	return l.emit(token.EOF)
 }
 
-func (l *Lexer) ident() *token.Token {
+func (l *Lexer) ident() token.Token {
 	for isAlphaNumeric(l.ch) {
 		l.next()
 	}
 	ident := l.input[l.start:l.current]
-	return &token.Token{
+	return token.Token{
 		Type:    token.LookupIdent(ident),
 		Literal: ident,
 	}
 }
 
-func (l *Lexer) number() *token.Token {
+func (l *Lexer) number() token.Token {
 	for isNumber(l.ch) {
 		l.next()
 	}
 
 	if l.ch == '.' {
 		if !isNumber(l.peek1()) {
-			return &token.Token{
+			return token.Token{
 				Type:    token.ILLEGAL,
 				Literal: l.input[l.start:l.current],
 			}
@@ -105,15 +142,14 @@ func (l *Lexer) number() *token.Token {
 		}
 	}
 
-	return &token.Token{
+	return token.Token{
 		Type:    token.NUMBER,
 		Literal: l.input[l.start:l.current],
 	}
 }
 
-func (l *Lexer) emit(ttype token.TokenType) *token.Token {
-	l.next()
-	return &token.Token{
+func (l *Lexer) emit(ttype token.TokenType) token.Token {
+	return token.Token{
 		Type:    ttype,
 		Literal: l.input[l.start:l.current],
 	}
@@ -126,7 +162,7 @@ func (l *Lexer) skip(chars ...byte) {
 }
 
 func (l *Lexer) match(char byte) bool {
-	if l.peek1() == char {
+	if l.ch == char {
 		l.next()
 		return true
 	}

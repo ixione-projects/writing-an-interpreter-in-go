@@ -180,3 +180,92 @@ func TestNextToken(t *testing.T) {
 		}
 	}
 }
+
+func TestToken(t *testing.T) {
+	tests := []struct {
+		input string
+		index int
+		token struct {
+			Type    token.TokenType
+			Literal string
+		}
+		tokens []struct {
+			Type    token.TokenType
+			Literal string
+		}
+	}{
+		{
+			input: `=+(){},;`,
+			index: 0,
+			token: struct {
+				Type    token.TokenType
+				Literal string
+			}{
+				Type:    token.ASSIGN,
+				Literal: "=",
+			},
+			tokens: []struct {
+				Type    token.TokenType
+				Literal string
+			}{
+				{token.ASSIGN, "="},
+				{token.PLUS, "+"},
+				{token.LPAREN, "("},
+				{token.RPAREN, ")"},
+				{token.LBRACE, "{"},
+				{token.RBRACE, "}"},
+				{token.COMMA, ","},
+				{token.SEMI, ";"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			input: `=+(){},;`,
+			index: 8,
+			token: struct {
+				Type    token.TokenType
+				Literal string
+			}{
+				Type:    token.EOF,
+				Literal: "",
+			},
+			tokens: []struct {
+				Type    token.TokenType
+				Literal string
+			}{
+				{token.ASSIGN, "="},
+				{token.PLUS, "+"},
+				{token.LPAREN, "("},
+				{token.RPAREN, ")"},
+				{token.LBRACE, "{"},
+				{token.RBRACE, "}"},
+				{token.COMMA, ","},
+				{token.SEMI, ";"},
+				{token.EOF, ""},
+			},
+		},
+	}
+
+	for i, test := range tests {
+		l := New(test.input)
+		token := l.Token(test.index)
+		if test.token.Type != token.Type {
+			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.token.Type, token.Type)
+		}
+
+		if test.token.Literal != token.Literal {
+			t.Errorf("test[%d] - wrong literal ==> expected: <%q> but was: <%q>", i, test.token.Literal, token.Literal)
+		}
+
+		for j, expected := range test.tokens {
+			actual := l.NextToken()
+			if expected.Type != actual.Type {
+				t.Errorf("test[%d][%d] - wrong type ==> expected: <%q> but was: <%q>", i, j, expected.Type, actual.Type)
+			}
+
+			if expected.Literal != actual.Literal {
+				t.Errorf("test[%d][%d] - wrong literal ==> expected: <%q> but was: <%q>", i, j, expected.Literal, actual.Literal)
+			}
+		}
+	}
+}

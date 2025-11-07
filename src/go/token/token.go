@@ -57,34 +57,34 @@ var tokens = [...]string{
 	NUMBER: "NUMBER", // 1343456
 
 	// Operators
-	ASSIGN: "=",
-	PLUS:   "+",
-	MINUS:  "-",
-	BANG:   "!",
-	STAR:   "*",
-	SLASH:  "/",
-	LT:     "<",
-	GT:     ">",
+	ASSIGN: "ASSIGN",
+	PLUS:   "PLUS",
+	MINUS:  "MINUS",
+	BANG:   "BANG",
+	STAR:   "STAR",
+	SLASH:  "SLASH",
+	LT:     "LT",
+	GT:     "GT",
 
-	EQ:     "==",
-	NOT_EQ: "!=",
+	EQ:     "EQ",
+	NOT_EQ: "NOT_EQ",
 
 	// Delimiters
-	COMMA:  ",",
-	SEMI:   ";",
-	LPAREN: "(",
-	RPAREN: ")",
-	LBRACE: "{",
-	RBRACE: "}",
+	COMMA:  "COMMA",
+	SEMI:   "SEMI",
+	LPAREN: "LPAREN",
+	RPAREN: "RPAREN",
+	LBRACE: "LBRACE",
+	RBRACE: "RBRACE",
 
 	// Keywords
-	FN:     "fn",
-	LET:    "let",
-	TRUE:   "true",
-	FALSE:  "false",
-	IF:     "if",
-	ELSE:   "else",
-	RETURN: "return",
+	FN:     "FN",
+	LET:    "LET",
+	TRUE:   "TRUE",
+	FALSE:  "FALSE",
+	IF:     "IF",
+	ELSE:   "ELSE",
+	RETURN: "RETURN",
 }
 
 var keywords = map[string]TokenType{
