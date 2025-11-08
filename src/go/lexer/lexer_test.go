@@ -9,26 +9,20 @@ import (
 func TestNextToken(t *testing.T) {
 	tests := []struct {
 		input  string
-		tokens []struct {
-			Type    token.TokenType
-			Literal string
-		}
+		tokens []token.Token
 	}{
 		{
 			input: `=+(){},;`,
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.ASSIGN, "="},
-				{token.PLUS, "+"},
-				{token.LPAREN, "("},
-				{token.RPAREN, ")"},
-				{token.LBRACE, "{"},
-				{token.RBRACE, "}"},
-				{token.COMMA, ","},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.PLUS, Literal: "+"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 		{
@@ -41,77 +35,68 @@ func TestNextToken(t *testing.T) {
 			};
 
 			let result = add(five, ten);`,
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.LET, "let"},
-				{token.IDENT, "five"},
-				{token.ASSIGN, "="},
-				{token.NUMBER, "5"},
-				{token.SEMI, ";"},
-				{token.LET, "let"},
-				{token.IDENT, "ten"},
-				{token.ASSIGN, "="},
-				{token.NUMBER, "10"},
-				{token.SEMI, ";"},
-				{token.LET, "let"},
-				{token.IDENT, "add"},
-				{token.ASSIGN, "="},
-				{token.FN, "fn"},
-				{token.LPAREN, "("},
-				{token.IDENT, "x"},
-				{token.COMMA, ","},
-				{token.IDENT, "y"},
-				{token.RPAREN, ")"},
-				{token.LBRACE, "{"},
-				{token.IDENT, "x"},
-				{token.PLUS, "+"},
-				{token.IDENT, "y"},
-				{token.SEMI, ";"},
-				{token.RBRACE, "}"},
-				{token.SEMI, ";"},
-				{token.LET, "let"},
-				{token.IDENT, "result"},
-				{token.ASSIGN, "="},
-				{token.IDENT, "add"},
-				{token.LPAREN, "("},
-				{token.IDENT, "five"},
-				{token.COMMA, ","},
-				{token.IDENT, "ten"},
-				{token.RPAREN, ")"},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.LET, Literal: "let"},
+				{Type: token.IDENT, Literal: "five"},
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.NUMBER, Literal: "5"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.LET, Literal: "let"},
+				{Type: token.IDENT, Literal: "ten"},
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.NUMBER, Literal: "10"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.LET, Literal: "let"},
+				{Type: token.IDENT, Literal: "add"},
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.FN, Literal: "fn"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.IDENT, Literal: "x"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.IDENT, Literal: "y"},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.IDENT, Literal: "x"},
+				{Type: token.PLUS, Literal: "+"},
+				{Type: token.IDENT, Literal: "y"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.LET, Literal: "let"},
+				{Type: token.IDENT, Literal: "result"},
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.IDENT, Literal: "add"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.IDENT, Literal: "five"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.IDENT, Literal: "ten"},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 		{
 			input: `!-/*5;`,
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.BANG, "!"},
-				{token.MINUS, "-"},
-				{token.SLASH, "/"},
-				{token.STAR, "*"},
-				{token.NUMBER, "5"},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.BANG, Literal: "!"},
+				{Type: token.MINUS, Literal: "-"},
+				{Type: token.SLASH, Literal: "/"},
+				{Type: token.STAR, Literal: "*"},
+				{Type: token.NUMBER, Literal: "5"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 		{
 			input: `5 < 10 > 5;`,
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.NUMBER, "5"},
-				{token.LT, "<"},
-				{token.NUMBER, "10"},
-				{token.GT, ">"},
-				{token.NUMBER, "5"},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.NUMBER, Literal: "5"},
+				{Type: token.LT, Literal: "<"},
+				{Type: token.NUMBER, Literal: "10"},
+				{Type: token.GT, Literal: ">"},
+				{Type: token.NUMBER, Literal: "5"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 		{
@@ -121,47 +106,41 @@ func TestNextToken(t *testing.T) {
 			} else {
 				return false;
 			}`,
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.IF, "if"},
-				{token.LPAREN, "("},
-				{token.NUMBER, "5"},
-				{token.LT, "<"},
-				{token.NUMBER, "10"},
-				{token.RPAREN, ")"},
-				{token.LBRACE, "{"},
-				{token.RETURN, "return"},
-				{token.TRUE, "true"},
-				{token.SEMI, ";"},
-				{token.RBRACE, "}"},
-				{token.ELSE, "else"},
-				{token.LBRACE, "{"},
-				{token.RETURN, "return"},
-				{token.FALSE, "false"},
-				{token.SEMI, ";"},
-				{token.RBRACE, "}"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.IF, Literal: "if"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.NUMBER, Literal: "5"},
+				{Type: token.LT, Literal: "<"},
+				{Type: token.NUMBER, Literal: "10"},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.RETURN, Literal: "return"},
+				{Type: token.TRUE, Literal: "true"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.ELSE, Literal: "else"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.RETURN, Literal: "return"},
+				{Type: token.FALSE, Literal: "false"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 		{
 			input: `
 			10 == 10;
 			10 != 9;`,
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.NUMBER, "10"},
-				{token.EQ, "=="},
-				{token.NUMBER, "10"},
-				{token.SEMI, ";"},
-				{token.NUMBER, "10"},
-				{token.NOT_EQ, "!="},
-				{token.NUMBER, "9"},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.NUMBER, Literal: "10"},
+				{Type: token.EQ, Literal: "=="},
+				{Type: token.NUMBER, Literal: "10"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.NUMBER, Literal: "10"},
+				{Type: token.NOT_EQ, Literal: "!="},
+				{Type: token.NUMBER, Literal: "9"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 	}
@@ -183,65 +162,66 @@ func TestNextToken(t *testing.T) {
 
 func TestToken(t *testing.T) {
 	tests := []struct {
-		input string
-		index int
-		token struct {
-			Type    token.TokenType
-			Literal string
-		}
-		tokens []struct {
-			Type    token.TokenType
-			Literal string
-		}
+		input     string
+		index     int
+		lookahead token.Token
+		tokens    []token.Token
 	}{
 		{
 			input: `=+(){},;`,
 			index: 0,
-			token: struct {
-				Type    token.TokenType
-				Literal string
-			}{
+			lookahead: token.Token{
 				Type:    token.ASSIGN,
 				Literal: "=",
 			},
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.ASSIGN, "="},
-				{token.PLUS, "+"},
-				{token.LPAREN, "("},
-				{token.RPAREN, ")"},
-				{token.LBRACE, "{"},
-				{token.RBRACE, "}"},
-				{token.COMMA, ","},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.PLUS, Literal: "+"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
+			},
+		},
+		{
+			input: `=+(){},;`,
+			index: 4,
+			lookahead: token.Token{
+				Type:    token.LBRACE,
+				Literal: "{",
+			},
+			tokens: []token.Token{
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.PLUS, Literal: "+"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 		{
 			input: `=+(){},;`,
 			index: 8,
-			token: struct {
-				Type    token.TokenType
-				Literal string
-			}{
+			lookahead: token.Token{
 				Type:    token.EOF,
 				Literal: "",
 			},
-			tokens: []struct {
-				Type    token.TokenType
-				Literal string
-			}{
-				{token.ASSIGN, "="},
-				{token.PLUS, "+"},
-				{token.LPAREN, "("},
-				{token.RPAREN, ")"},
-				{token.LBRACE, "{"},
-				{token.RBRACE, "}"},
-				{token.COMMA, ","},
-				{token.SEMI, ";"},
-				{token.EOF, ""},
+			tokens: []token.Token{
+				{Type: token.ASSIGN, Literal: "="},
+				{Type: token.PLUS, Literal: "+"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
 			},
 		},
 	}
@@ -249,12 +229,12 @@ func TestToken(t *testing.T) {
 	for i, test := range tests {
 		l := New(test.input)
 		token := l.Token(test.index)
-		if test.token.Type != token.Type {
-			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.token.Type, token.Type)
+		if test.lookahead.Type != token.Type {
+			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.lookahead.Type, token.Type)
 		}
 
-		if test.token.Literal != token.Literal {
-			t.Errorf("test[%d] - wrong literal ==> expected: <%q> but was: <%q>", i, test.token.Literal, token.Literal)
+		if test.lookahead.Literal != token.Literal {
+			t.Errorf("test[%d] - wrong literal ==> expected: <%q> but was: <%q>", i, test.lookahead.Literal, token.Literal)
 		}
 
 		for j, expected := range test.tokens {

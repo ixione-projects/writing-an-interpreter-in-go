@@ -28,7 +28,8 @@ func (l *Lexer) Token(index int) token.Token {
 }
 
 func (l *Lexer) ensure(n int) {
-	tokens := []token.Token{}
+	tokens := l.tokens
+	l.tokens = []token.Token{}
 	for range n {
 		tokens = append(tokens, l.NextToken())
 	}
@@ -38,7 +39,9 @@ func (l *Lexer) ensure(n int) {
 func (l *Lexer) NextToken() token.Token {
 	if len(l.tokens) > 0 {
 		tok := l.tokens[0]
-		l.tokens = l.tokens[1:]
+		if len(l.tokens) != 1 || tok.Type != token.EOF {
+			l.tokens = l.tokens[1:]
+		}
 		return tok
 	}
 
@@ -103,6 +106,7 @@ func (l *Lexer) NextToken() token.Token {
 			} else if isNumber(l.ch) {
 				return l.number()
 			} else {
+				l.next()
 				return l.emit(token.ILLEGAL)
 			}
 		}
