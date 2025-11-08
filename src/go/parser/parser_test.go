@@ -10,6 +10,7 @@ import (
 type ParserTest struct {
 	input   string
 	errors  []string
+	debug   bool
 	program ProgramTest
 }
 
@@ -21,10 +22,13 @@ func (p ProgramTest) node()              {}
 func (ls LetStatementTest) node()        {}
 func (rs ReturnStatementTest) node()     {}
 func (es ExpressionStatementTest) node() {}
+func (bs BlockStatementTest) node()      {}
 func (pe PrefixExpressionTest) node()    {}
 func (ie InfixExpressionTest) node()     {}
+func (ie IfExpressionTest) node()        {}
 func (i IdentifierTest) node()           {}
-func (n NumberLiteralTest) node()        {}
+func (nl NumberLiteralTest) node()       {}
+func (bl BooleanLiteralTest) node()      {}
 
 type ProgramTest struct {
 	Statements []StatementTest
@@ -38,6 +42,7 @@ type StatementTest interface {
 func (ls LetStatementTest) statementNode()        {}
 func (rs ReturnStatementTest) statementNode()     {}
 func (es ExpressionStatementTest) statementNode() {}
+func (bs BlockStatementTest) statementNode()      {}
 
 type LetStatementTest struct {
 	Name   IdentifierTest
@@ -55,6 +60,10 @@ type ExpressionStatementTest struct {
 	String     string
 }
 
+type BlockStatementTest struct {
+	Statements []StatementTest
+}
+
 type ExpressionTest interface {
 	NodeTest
 	expressionNode()
@@ -62,8 +71,10 @@ type ExpressionTest interface {
 
 func (pe PrefixExpressionTest) expressionNode() {}
 func (ie InfixExpressionTest) expressionNode()  {}
+func (ie IfExpressionTest) expressionNode()     {}
 func (i IdentifierTest) expressionNode()        {}
-func (n NumberLiteralTest) expressionNode()     {}
+func (nl NumberLiteralTest) expressionNode()    {}
+func (nl BooleanLiteralTest) expressionNode()   {}
 
 type PrefixExpressionTest struct {
 	Operator string
@@ -76,9 +87,16 @@ type InfixExpressionTest struct {
 	Right    ExpressionTest
 }
 
+type IfExpressionTest struct {
+	Condition   ExpressionTest
+	Consequence BlockStatementTest
+	Alternative BlockStatementTest
+}
+
 type (
-	IdentifierTest    string
-	NumberLiteralTest float64
+	IdentifierTest     string
+	NumberLiteralTest  float64
+	BooleanLiteralTest bool
 )
 
 func TestLetStatement(t *testing.T) {
@@ -216,6 +234,28 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
+				{
+					input: `!true;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								PrefixExpressionTest{"!", BooleanLiteralTest(true)},
+								"(!true);",
+							},
+						},
+					},
+				},
+				{
+					input: `!false;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								PrefixExpressionTest{"!", BooleanLiteralTest(false)},
+								"(!false);",
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -305,6 +345,39 @@ func TestExpressionStatement(t *testing.T) {
 							ExpressionStatementTest{
 								InfixExpressionTest{NumberLiteralTest(5), "!=", NumberLiteralTest(5)},
 								"(5!=5);",
+							},
+						},
+					},
+				},
+				{
+					input: `true == true`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{BooleanLiteralTest(true), "==", BooleanLiteralTest(true)},
+								"(true==true);",
+							},
+						},
+					},
+				},
+				{
+					input: `true != false`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{BooleanLiteralTest(true), "!=", BooleanLiteralTest(false)},
+								"(true!=false);",
+							},
+						},
+					},
+				},
+				{
+					input: `false == false`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{BooleanLiteralTest(false), "==", BooleanLiteralTest(false)},
+								"(false==false);",
 							},
 						},
 					},
@@ -517,6 +590,234 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
+				{
+					input: `true`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								BooleanLiteralTest(true),
+								"true;",
+							},
+						},
+					},
+				},
+				{
+					input: `false`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								BooleanLiteralTest(false),
+								"false;",
+							},
+						},
+					},
+				},
+				{
+					input: `3 > 5 == false`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{
+									InfixExpressionTest{NumberLiteralTest(3), ">", NumberLiteralTest(5)},
+									"==",
+									BooleanLiteralTest(false),
+								},
+								"((3>5)==false);",
+							},
+						},
+					},
+				},
+				{
+					input: `3 < 5 == true`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{
+									InfixExpressionTest{NumberLiteralTest(3), "<", NumberLiteralTest(5)},
+									"==",
+									BooleanLiteralTest(true),
+								},
+								"((3<5)==true);",
+							},
+						},
+					},
+				},
+				{
+					input: `1 + (2 + 3) + 4`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{
+									InfixExpressionTest{
+										NumberLiteralTest(1),
+										"+",
+										InfixExpressionTest{NumberLiteralTest(2), "+", NumberLiteralTest(3)},
+									},
+									"+",
+									NumberLiteralTest(4),
+								},
+								"((1+(2+3))+4);",
+							},
+						},
+					},
+				},
+				{
+					input: `(5 + 5) * 2`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{
+									InfixExpressionTest{
+										NumberLiteralTest(5),
+										"+",
+										NumberLiteralTest(5),
+									},
+									"*",
+									NumberLiteralTest(2),
+								},
+								"((5+5)*2);",
+							},
+						},
+					},
+				},
+				{
+					input: `2 / (5 + 5)`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{
+									NumberLiteralTest(2),
+									"/",
+									InfixExpressionTest{
+										NumberLiteralTest(5),
+										"+",
+										NumberLiteralTest(5),
+									},
+								},
+								"(2/(5+5));",
+							},
+						},
+					},
+				},
+				{
+					input: `-(5 + 5)`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								PrefixExpressionTest{
+									"-",
+									InfixExpressionTest{
+										NumberLiteralTest(5),
+										"+",
+										NumberLiteralTest(5),
+									},
+								},
+								"(-(5+5));",
+							},
+						},
+					},
+				},
+				{
+					input: `!(true == true)`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								PrefixExpressionTest{
+									"!",
+									InfixExpressionTest{
+										BooleanLiteralTest(true),
+										"==",
+										BooleanLiteralTest(true),
+									},
+								},
+								"(!(true==true));",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestBooleanLiteralExpression",
+			tests: []ParserTest{
+				{
+					input: `true;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								BooleanLiteralTest(true),
+								"true;",
+							},
+						},
+					},
+				},
+				{
+					input: `false;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								BooleanLiteralTest(false),
+								"false;",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestIfExpression",
+			tests: []ParserTest{
+				{
+					input: `if (x < y) { x }`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								IfExpressionTest{
+									InfixExpressionTest{IdentifierTest("x"), "<", IdentifierTest("y")},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												IdentifierTest("x"),
+												"x;",
+											},
+										},
+									},
+									BlockStatementTest{},
+								},
+								"if (x<y) {x;};",
+							},
+						},
+					},
+				},
+				{
+					input: `if (x < y) { x } else { y }`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								IfExpressionTest{
+									InfixExpressionTest{IdentifierTest("x"), "<", IdentifierTest("y")},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												IdentifierTest("x"),
+												"x;",
+											},
+										},
+									},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												IdentifierTest("y"),
+												"y;",
+											},
+										},
+									},
+								},
+								"if (x<y) {x;} else {y;};",
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -531,7 +832,7 @@ func TestExpressionStatement(t *testing.T) {
 }
 
 func testParser(t *testing.T, i int, test ParserTest) {
-	p := New(test.input)
+	p := New(test.input, test.debug)
 	program := p.ParseProgram()
 
 	if len(test.errors) != len(p.Errors()) {
@@ -569,23 +870,34 @@ func testProgram(t *testing.T, i int, expected ProgramTest, actual *ast.Program)
 	}
 
 	for j, stmt := range expected.Statements {
-		switch stmt := stmt.(type) {
-		case LetStatementTest:
-			if !testLetStatement(t, i, j, stmt, actual.Statements[j]) {
-				t.Fatalf("test[%d][%d] - %s", i, j, actual.Statements[j].String())
-			}
-		case ReturnStatementTest:
-			if !testReturnStatement(t, i, j, stmt, actual.Statements[j]) {
-				t.Fatalf("test[%d][%d] - %s", i, j, actual.Statements[j].String())
-			}
-		case ExpressionStatementTest:
-			if !testExpressionStatement(t, i, j, stmt, actual.Statements[j]) {
-				t.Fatalf("test[%d][%d] - %s", i, j, actual.Statements[j].String())
-			}
-		default:
-			t.Fatalf("test[%d][%d] - unexpected type <%T>", i, j, stmt)
+		if !testStatement(t, i, j, stmt, actual.Statements[j]) {
+			t.Fatalf("test[%d][%d] - %s", i, j, actual.Statements[j].String())
 		}
 	}
+}
+
+func testStatement(t *testing.T, i, j int, expected StatementTest, actual ast.Statement) bool {
+	switch expected := expected.(type) {
+	case LetStatementTest:
+		if !testLetStatement(t, i, j, expected, actual) {
+			return false
+		}
+	case ReturnStatementTest:
+		if !testReturnStatement(t, i, j, expected, actual) {
+			return false
+		}
+	case ExpressionStatementTest:
+		if !testExpressionStatement(t, i, j, expected, actual) {
+			return false
+		}
+	case BlockStatementTest:
+		if !testBlockStatement(t, i, j, expected, actual) {
+			return false
+		}
+	default:
+		t.Fatalf("test[%d][%d] - unexpected type <%T>", i, j, expected)
+	}
+	return true
 }
 
 func testLetStatement(t *testing.T, i, j int, expected LetStatementTest, actual ast.Statement) bool {
@@ -659,6 +971,26 @@ func testExpressionStatement(t *testing.T, i, j int, expected ExpressionStatemen
 	return true
 }
 
+func testBlockStatement(t *testing.T, i, j int, expected BlockStatementTest, actual ast.Statement) bool {
+	block, ok := actual.(*ast.BlockStatement)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.BlockStatement) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.BlockStatement{}, actual)
+		return false
+	}
+
+	if len(expected.Statements) != len(block.Statements) {
+		t.Fatalf("test[%d] - len(block.Statements) ==> expected: <%d> but was: <%d>", i, len(expected.Statements), len(block.Statements))
+	}
+
+	for k, stmt := range expected.Statements {
+		if !testStatement(t, i, j, stmt, block.Statements[k]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.Expression) bool {
 	switch expected := expected.(type) {
 	case PrefixExpressionTest:
@@ -669,12 +1001,20 @@ func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.
 		if !testInfixExpression(t, i, j, expected, actual) {
 			return false
 		}
+	case IfExpressionTest:
+		if !testIfExpression(t, i, j, expected, actual) {
+			return false
+		}
 	case IdentifierTest:
 		if !testIdentifier(t, i, j, expected, actual) {
 			return false
 		}
 	case NumberLiteralTest:
 		if !testNumberLiteral(t, i, j, expected, actual) {
+			return false
+		}
+	case BooleanLiteralTest:
+		if !testBooleanLiteral(t, i, j, expected, actual) {
 			return false
 		}
 	default:
@@ -725,6 +1065,33 @@ func testInfixExpression(t *testing.T, i, j int, expected InfixExpressionTest, a
 	return true
 }
 
+func testIfExpression(t *testing.T, i, j int, expected IfExpressionTest, actual ast.Expression) bool {
+	if "if" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.IfExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "if", actual.TokenLiteral())
+		return false
+	}
+
+	expr, ok := actual.(*ast.IfExpression)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.IfExpression) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.IfExpression{}, actual)
+		return false
+	}
+
+	if !testExpression(t, i, j, expected.Condition, expr.Condition) {
+		return false
+	}
+
+	if !testBlockStatement(t, i, j, expected.Consequence, expr.Consequence) {
+		return false
+	}
+
+	if len(expected.Alternative.Statements) > 0 && !testBlockStatement(t, i, j, expected.Alternative, expr.Alternative) {
+		return false
+	}
+
+	return true
+}
+
 func testIdentifier(t *testing.T, i, j int, expected IdentifierTest, actual ast.Expression) bool {
 	if string(expected) != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.Identifier.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, string(expected), actual.TokenLiteral())
@@ -747,18 +1114,38 @@ func testIdentifier(t *testing.T, i, j int, expected IdentifierTest, actual ast.
 
 func testNumberLiteral(t *testing.T, i, j int, expected NumberLiteralTest, actual ast.Expression) bool {
 	if fmt.Sprintf("%.0f", float64(expected)) != actual.TokenLiteral() {
-		t.Errorf("test[%d][%d] - *ast.Number.TokenLiteral() ==> expected: <%f> but was: <%s>", i, j, float64(expected), actual.TokenLiteral())
+		t.Errorf("test[%d][%d] - *ast.NumberLiteral.TokenLiteral() ==> expected: <%f> but was: <%s>", i, j, float64(expected), actual.TokenLiteral())
 		return false
 	}
 
-	expr, ok := actual.(*ast.Number)
+	expr, ok := actual.(*ast.NumberLiteral)
 	if !ok {
-		t.Errorf("test[%d][%d] - actual.(*ast.Number) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.Number{}, actual)
+		t.Errorf("test[%d][%d] - actual.(*ast.NumberLiteral) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.NumberLiteral{}, actual)
 		return false
 	}
 
 	if float64(expected) != expr.Value {
-		t.Errorf("test[%d][%d] - *ast.Number.Value ==> expected: <%f> but was: <%f>", i, j, float64(expected), expr.Value)
+		t.Errorf("test[%d][%d] - *ast.NumberLiteral.Value ==> expected: <%f> but was: <%f>", i, j, float64(expected), expr.Value)
+		return false
+	}
+
+	return true
+}
+
+func testBooleanLiteral(t *testing.T, i, j int, expected BooleanLiteralTest, actual ast.Expression) bool {
+	if fmt.Sprintf("%t", bool(expected)) != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.BooleanLiteral.TokenLiteral() ==> expected: <%t> but was: <%s>", i, j, bool(expected), actual.TokenLiteral())
+		return false
+	}
+
+	expr, ok := actual.(*ast.BooleanLiteral)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.BooleanLiteral) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.NumberLiteral{}, actual)
+		return false
+	}
+
+	if bool(expected) != expr.Value {
+		t.Errorf("test[%d][%d] - *ast.BooleanLiteral.Value ==> expected: <%t> but was: <%t>", i, j, bool(expected), expr.Value)
 		return false
 	}
 

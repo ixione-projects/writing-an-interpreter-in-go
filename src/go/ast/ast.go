@@ -38,6 +38,7 @@ type Statement interface {
 func (ls *LetStatement) statementNode()        {}
 func (rs *ReturnStatement) statementNode()     {}
 func (es *ExpressionStatement) statementNode() {}
+func (bs *BlockStatement) statementNode()      {}
 
 type LetStatement struct {
 	Token token.Token
@@ -106,6 +107,25 @@ func (es *ExpressionStatement) String() string {
 	return out.String()
 }
 
+type BlockStatement struct {
+	Token      token.Token
+	Statements []Statement
+}
+
+func (bs *BlockStatement) TokenLiteral() string {
+	return bs.Token.Literal
+}
+
+func (bs *BlockStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("{")
+	for _, s := range bs.Statements {
+		out.WriteString(s.String())
+	}
+	out.WriteString("}")
+	return out.String()
+}
+
 type Expression interface {
 	Node
 	expressionNode()
@@ -113,8 +133,10 @@ type Expression interface {
 
 func (pe *PrefixExpression) expressionNode() {}
 func (ie *InfixExpression) expressionNode()  {}
+func (ie *IfExpression) expressionNode()     {}
 func (i *Identifier) expressionNode()        {}
-func (n *Number) expressionNode()            {}
+func (nl *NumberLiteral) expressionNode()    {}
+func (bl *BooleanLiteral) expressionNode()   {}
 
 type PrefixExpression struct {
 	Token    token.Token
@@ -160,6 +182,33 @@ func (ie *InfixExpression) String() string {
 	return out.String()
 }
 
+type IfExpression struct {
+	Token       token.Token
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) TokenLiteral() string {
+	return ie.Token.Literal
+}
+
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("if")
+	out.WriteString(" ")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ie.Consequence.String())
+	if ie.Alternative != nil {
+		out.WriteString(" else ")
+		out.WriteString(ie.Alternative.String())
+	}
+
+	return out.String()
+}
+
 type Identifier struct {
 	Token token.Token
 	Value string
@@ -173,15 +222,28 @@ func (i *Identifier) String() string {
 	return i.Value
 }
 
-type Number struct {
+type NumberLiteral struct {
 	Token token.Token
 	Value float64
 }
 
-func (n *Number) TokenLiteral() string {
-	return n.Token.Literal
+func (nl *NumberLiteral) TokenLiteral() string {
+	return nl.Token.Literal
 }
 
-func (n *Number) String() string {
-	return n.Token.Literal
+func (nl *NumberLiteral) String() string {
+	return nl.Token.Literal
+}
+
+type BooleanLiteral struct {
+	Token token.Token
+	Value bool
+}
+
+func (bl *BooleanLiteral) TokenLiteral() string {
+	return bl.Token.Literal
+}
+
+func (bl *BooleanLiteral) String() string {
+	return bl.Token.Literal
 }

@@ -27,7 +27,7 @@ func (l *Lexer) Token(index int) token.Token {
 	return l.tokens[index]
 }
 
-func (l *Lexer) ensure(n int) {
+func (l *Lexer) ensure(n int) { // TODO: this can be more efficient
 	tokens := l.tokens
 	l.tokens = []token.Token{}
 	for range n {
