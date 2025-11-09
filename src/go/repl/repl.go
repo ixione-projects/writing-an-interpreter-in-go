@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/evaluator"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/parser"
 )
 
@@ -43,7 +44,10 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		io.WriteString(out, program.String())
+		value := evaluator.Evaluate(program)
+		if value != nil {
+			io.WriteString(out, value.Inspect()+"\n")
+		}
 	}
 }
 
