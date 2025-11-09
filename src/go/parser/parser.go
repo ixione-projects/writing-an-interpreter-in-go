@@ -70,11 +70,11 @@ func New(input string, debug bool) *Parser {
 		token.NOT_EQ:  {nil, p.parseInfixExpression, EQUALITY},
 		token.COMMA:   {nil, nil, NONE},
 		token.SEMI:    {nil, nil, NONE},
-		token.LPAREN:  {p.parseGroupingExpression, nil, NONE},
+		token.LPAREN:  {p.parseGroupingExpression, p.parseCallExpression, CALL},
 		token.RPAREN:  {nil, nil, NONE},
 		token.LBRACE:  {nil, nil, NONE},
 		token.RBRACE:  {nil, nil, NONE},
-		token.FN:      {nil, nil, NONE},
+		token.FN:      {p.parseFunctionLiteral, nil, NONE},
 		token.LET:     {nil, nil, NONE},
 		token.TRUE:    {p.parseBooleanLiteral, nil, NONE},
 		token.FALSE:   {p.parseBooleanLiteral, nil, NONE},
@@ -206,12 +206,11 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	block.Statements = statements
 
 	if p.tok.Type != token.RBRACE {
+		p.error("expected token to be <RBRACE> but was <%s>", p.tok.Type)
 		return nil
 	}
 
-	p.next()
-
-	return block
+	return block // parseBlockStatement follows the expression protocol
 }
 
 func (p *Parser) parseExpression(rightPrecedence precedence) ast.Expression {
@@ -309,11 +308,69 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	}
 
 	expr.Consequence = p.parseBlockStatement()
-	if p.tok.Type == token.ELSE {
+	if p.peek1().Type == token.ELSE {
+		p.next()
+
 		if !p.expect(token.LBRACE) {
 			return nil
 		}
 		expr.Alternative = p.parseBlockStatement()
+	}
+
+	return expr
+}
+
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	if p.debug {
+		defer un(trace("ParseFunctionLiteral"))
+	}
+
+	expr := &ast.FunctionLiteral{Token: p.tok}
+	if !p.expect(token.LPAREN) {
+		return nil
+	}
+
+	if p.peek1().Type == token.RPAREN {
+		expr.Parameters = []*ast.Identifier{}
+	} else {
+		p.next()
+
+		expr.Parameters = p.parseParameters()
+	}
+
+	if !p.expect(token.RPAREN) {
+		return nil
+	}
+
+	if !p.expect(token.LBRACE) {
+		return nil
+	}
+
+	expr.Body = p.parseBlockStatement()
+
+	return expr
+}
+
+func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
+	if p.debug {
+		defer un(trace("ParseCallExpression"))
+	}
+
+	expr := &ast.CallExpression{
+		Token:  p.tok,
+		Callee: left,
+	}
+
+	if p.peek1().Type == token.RPAREN {
+		expr.Arguments = []ast.Expression{}
+	} else {
+		p.next()
+
+		expr.Arguments = p.parseArguments()
+	}
+
+	if !p.expect(token.RPAREN) {
+		return nil
 	}
 
 	return expr
@@ -346,6 +403,54 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 	}
 
 	return &ast.BooleanLiteral{Token: p.tok, Value: p.tok.Type == token.TRUE}
+}
+
+func (p *Parser) parseParameters() []*ast.Identifier {
+	idents := []*ast.Identifier{}
+
+	ident := p.parseIdentifier().(*ast.Identifier)
+	if ident != nil {
+		idents = append(idents, ident)
+	}
+
+	for p.peek1().Type != token.RPAREN {
+		if !p.expect(token.COMMA) {
+			return nil
+		}
+
+		p.next()
+
+		ident := p.parseIdentifier().(*ast.Identifier)
+		if ident != nil {
+			idents = append(idents, ident)
+		}
+	}
+
+	return idents
+}
+
+func (p *Parser) parseArguments() []ast.Expression {
+	args := []ast.Expression{}
+
+	arg := p.parseExpression(ASSIGNMENT - 1) // right associativity
+	if arg != nil {
+		args = append(args, arg)
+	}
+
+	for p.peek1().Type != token.RPAREN {
+		if !p.expect(token.COMMA) {
+			return nil
+		}
+
+		p.next()
+
+		arg := p.parseExpression(ASSIGNMENT - 1) // right associativity
+		if arg != nil {
+			args = append(args, arg)
+		}
+	}
+
+	return args
 }
 
 func (p *Parser) expect(ttype token.TokenType) bool {

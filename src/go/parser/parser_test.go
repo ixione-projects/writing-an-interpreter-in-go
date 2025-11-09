@@ -26,6 +26,8 @@ func (bs BlockStatementTest) node()      {}
 func (pe PrefixExpressionTest) node()    {}
 func (ie InfixExpressionTest) node()     {}
 func (ie IfExpressionTest) node()        {}
+func (fl FunctionLiteralTest) node()     {}
+func (ce CallExpressionTest) node()      {}
 func (i IdentifierTest) node()           {}
 func (nl NumberLiteralTest) node()       {}
 func (bl BooleanLiteralTest) node()      {}
@@ -72,6 +74,8 @@ type ExpressionTest interface {
 func (pe PrefixExpressionTest) expressionNode() {}
 func (ie InfixExpressionTest) expressionNode()  {}
 func (ie IfExpressionTest) expressionNode()     {}
+func (fl FunctionLiteralTest) expressionNode()  {}
+func (ce CallExpressionTest) expressionNode()   {}
 func (i IdentifierTest) expressionNode()        {}
 func (nl NumberLiteralTest) expressionNode()    {}
 func (nl BooleanLiteralTest) expressionNode()   {}
@@ -91,6 +95,16 @@ type IfExpressionTest struct {
 	Condition   ExpressionTest
 	Consequence BlockStatementTest
 	Alternative BlockStatementTest
+}
+
+type FunctionLiteralTest struct {
+	Parameters []IdentifierTest
+	Body       BlockStatementTest
+}
+
+type CallExpressionTest struct {
+	Callee    ExpressionTest
+	Arguments []ExpressionTest
 }
 
 type (
@@ -378,6 +392,195 @@ func TestExpressionStatement(t *testing.T) {
 							ExpressionStatementTest{
 								InfixExpressionTest{BooleanLiteralTest(false), "==", BooleanLiteralTest(false)},
 								"(false==false);",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestBooleanLiteralExpression",
+			tests: []ParserTest{
+				{
+					input: `true;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								BooleanLiteralTest(true),
+								"true;",
+							},
+						},
+					},
+				},
+				{
+					input: `false;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								BooleanLiteralTest(false),
+								"false;",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestIfExpression",
+			tests: []ParserTest{
+				{
+					input: `if (x < y) { x }`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								IfExpressionTest{
+									InfixExpressionTest{IdentifierTest("x"), "<", IdentifierTest("y")},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												IdentifierTest("x"),
+												"x;",
+											},
+										},
+									},
+									BlockStatementTest{},
+								},
+								"if (x<y) {x;};",
+							},
+						},
+					},
+				},
+				{
+					input: `if (x < y) { x } else { y }`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								IfExpressionTest{
+									InfixExpressionTest{IdentifierTest("x"), "<", IdentifierTest("y")},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												IdentifierTest("x"),
+												"x;",
+											},
+										},
+									},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												IdentifierTest("y"),
+												"y;",
+											},
+										},
+									},
+								},
+								"if (x<y) {x;} else {y;};",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestFunctionLiteralExpression",
+			tests: []ParserTest{
+				{
+					input: `fn(x, y) { x + y; }`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								FunctionLiteralTest{
+									[]IdentifierTest{
+										IdentifierTest("x"),
+										IdentifierTest("y"),
+									},
+									BlockStatementTest{
+										[]StatementTest{
+											ExpressionStatementTest{
+												InfixExpressionTest{IdentifierTest("x"), "+", IdentifierTest("y")},
+												"(x+y);",
+											},
+										},
+									},
+								},
+								"fn(x,y){(x+y);};",
+							},
+						},
+					},
+				},
+				{
+					input: `fn() {};`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								FunctionLiteralTest{
+									[]IdentifierTest{},
+									BlockStatementTest{
+										[]StatementTest{},
+									},
+								},
+								"fn(){};",
+							},
+						},
+					},
+				},
+				{
+					input: `fn(x) {};`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								FunctionLiteralTest{
+									[]IdentifierTest{
+										IdentifierTest("x"),
+									},
+									BlockStatementTest{
+										[]StatementTest{},
+									},
+								},
+								"fn(x){};",
+							},
+						},
+					},
+				},
+				{
+					input: `fn(x, y, z) {};`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								FunctionLiteralTest{
+									[]IdentifierTest{
+										IdentifierTest("x"),
+										IdentifierTest("y"),
+										IdentifierTest("z"),
+									},
+									BlockStatementTest{
+										[]StatementTest{},
+									},
+								},
+								"fn(x,y,z){};",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestCallExpression",
+			tests: []ParserTest{
+				{
+					input: `add(1, 2 * 3, 4 + 5);`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								CallExpressionTest{
+									IdentifierTest("add"),
+									[]ExpressionTest{
+										NumberLiteralTest(1),
+										InfixExpressionTest{NumberLiteralTest(2), "*", NumberLiteralTest(3)},
+										InfixExpressionTest{NumberLiteralTest(4), "+", NumberLiteralTest(5)},
+									},
+								},
+								"add(1,(2*3),(4+5));",
 							},
 						},
 					},
@@ -735,85 +938,81 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
-			},
-		},
-		{
-			name: "TestBooleanLiteralExpression",
-			tests: []ParserTest{
 				{
-					input: `true;`,
+					input: `a + add(b * c) + d`,
 					program: ProgramTest{
 						[]StatementTest{
 							ExpressionStatementTest{
-								BooleanLiteralTest(true),
-								"true;",
-							},
-						},
-					},
-				},
-				{
-					input: `false;`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								BooleanLiteralTest(false),
-								"false;",
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "TestIfExpression",
-			tests: []ParserTest{
-				{
-					input: `if (x < y) { x }`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								IfExpressionTest{
-									InfixExpressionTest{IdentifierTest("x"), "<", IdentifierTest("y")},
-									BlockStatementTest{
-										[]StatementTest{
-											ExpressionStatementTest{
-												IdentifierTest("x"),
-												"x;",
+								InfixExpressionTest{
+									InfixExpressionTest{
+										IdentifierTest("a"),
+										"+",
+										CallExpressionTest{
+											IdentifierTest("add"),
+											[]ExpressionTest{
+												InfixExpressionTest{IdentifierTest("b"), "*", IdentifierTest("c")},
 											},
 										},
 									},
-									BlockStatementTest{},
+									"+",
+									IdentifierTest("d"),
 								},
-								"if (x<y) {x;};",
+								"((a+add((b*c)))+d);",
 							},
 						},
 					},
 				},
 				{
-					input: `if (x < y) { x } else { y }`,
+					input: `add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))`,
 					program: ProgramTest{
 						[]StatementTest{
 							ExpressionStatementTest{
-								IfExpressionTest{
-									InfixExpressionTest{IdentifierTest("x"), "<", IdentifierTest("y")},
-									BlockStatementTest{
-										[]StatementTest{
-											ExpressionStatementTest{
-												IdentifierTest("x"),
-												"x;",
-											},
-										},
-									},
-									BlockStatementTest{
-										[]StatementTest{
-											ExpressionStatementTest{
-												IdentifierTest("y"),
-												"y;",
+								CallExpressionTest{
+									IdentifierTest("add"),
+									[]ExpressionTest{
+										IdentifierTest("a"),
+										IdentifierTest("b"),
+										NumberLiteralTest(1),
+										InfixExpressionTest{NumberLiteralTest(2), "*", NumberLiteralTest(3)},
+										InfixExpressionTest{NumberLiteralTest(4), "+", NumberLiteralTest(5)},
+										CallExpressionTest{
+											IdentifierTest("add"),
+											[]ExpressionTest{
+												NumberLiteralTest(6),
+												InfixExpressionTest{NumberLiteralTest(7), "*", NumberLiteralTest(8)},
 											},
 										},
 									},
 								},
-								"if (x<y) {x;} else {y;};",
+								"add(a,b,1,(2*3),(4+5),add(6,(7*8)));",
+							},
+						},
+					},
+				},
+				{
+					input: `add(a + b + c * d / f + g);`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								CallExpressionTest{
+									IdentifierTest("add"),
+									[]ExpressionTest{
+										InfixExpressionTest{
+											InfixExpressionTest{
+												InfixExpressionTest{IdentifierTest("a"), "+", IdentifierTest("b")},
+												"+",
+												InfixExpressionTest{
+													InfixExpressionTest{IdentifierTest("c"), "*", IdentifierTest("d")},
+													"/",
+													IdentifierTest("f"),
+												},
+											},
+											"+",
+											IdentifierTest("g"),
+										},
+									},
+								},
+								"add((((a+b)+((c*d)/f))+g));",
 							},
 						},
 					},
@@ -972,6 +1171,11 @@ func testExpressionStatement(t *testing.T, i, j int, expected ExpressionStatemen
 }
 
 func testBlockStatement(t *testing.T, i, j int, expected BlockStatementTest, actual ast.Statement) bool {
+	if "{" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.BlockStatement.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "{", actual.TokenLiteral())
+		return false
+	}
+
 	block, ok := actual.(*ast.BlockStatement)
 	if !ok {
 		t.Errorf("test[%d][%d] - actual.(*ast.BlockStatement) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.BlockStatement{}, actual)
@@ -979,7 +1183,8 @@ func testBlockStatement(t *testing.T, i, j int, expected BlockStatementTest, act
 	}
 
 	if len(expected.Statements) != len(block.Statements) {
-		t.Fatalf("test[%d] - len(block.Statements) ==> expected: <%d> but was: <%d>", i, len(expected.Statements), len(block.Statements))
+		t.Errorf("test[%d] - len(block.Statements) ==> expected: <%d> but was: <%d>", i, len(expected.Statements), len(block.Statements))
+		return false
 	}
 
 	for k, stmt := range expected.Statements {
@@ -1003,6 +1208,14 @@ func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.
 		}
 	case IfExpressionTest:
 		if !testIfExpression(t, i, j, expected, actual) {
+			return false
+		}
+	case FunctionLiteralTest:
+		if !testFunctionLiteral(t, i, j, expected, actual) {
+			return false
+		}
+	case CallExpressionTest:
+		if !testCallExpression(t, i, j, expected, actual) {
 			return false
 		}
 	case IdentifierTest:
@@ -1087,6 +1300,66 @@ func testIfExpression(t *testing.T, i, j int, expected IfExpressionTest, actual 
 
 	if len(expected.Alternative.Statements) > 0 && !testBlockStatement(t, i, j, expected.Alternative, expr.Alternative) {
 		return false
+	}
+
+	return true
+}
+
+func testFunctionLiteral(t *testing.T, i, j int, expected FunctionLiteralTest, actual ast.Expression) bool {
+	if "fn" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.FunctionLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "if", actual.TokenLiteral())
+		return false
+	}
+
+	fn, ok := actual.(*ast.FunctionLiteral)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.FunctionLiteral) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.FunctionLiteral{}, actual)
+		return false
+	}
+
+	if len(expected.Parameters) != len(fn.Parameters) {
+		t.Errorf("test[%d] - len(fn.Parameters) ==> expected: <%d> but was: <%d>", i, len(expected.Parameters), len(fn.Parameters))
+		return false
+	}
+
+	for k, parameter := range expected.Parameters {
+		if !testIdentifier(t, i, j, parameter, fn.Parameters[k]) {
+			return false
+		}
+	}
+
+	if !testBlockStatement(t, i, j, expected.Body, fn.Body) {
+		return false
+	}
+
+	return true
+}
+
+func testCallExpression(t *testing.T, i, j int, expected CallExpressionTest, actual ast.Expression) bool {
+	if "(" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.CallExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "(", actual.TokenLiteral())
+		return false
+	}
+
+	call, ok := actual.(*ast.CallExpression)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.CallExpression) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.CallExpression{}, actual)
+		return false
+	}
+
+	if !testExpression(t, i, j, expected.Callee, call.Callee) {
+		return false
+	}
+
+	if len(expected.Arguments) != len(call.Arguments) {
+		t.Errorf("test[%d] - len(call.Arguments) ==> expected: <%d> but was: <%d>", i, len(expected.Arguments), len(call.Arguments))
+		return false
+	}
+
+	for k, argument := range expected.Arguments {
+		if !testExpression(t, i, j, argument, call.Arguments[k]) {
+			return false
+		}
 	}
 
 	return true
