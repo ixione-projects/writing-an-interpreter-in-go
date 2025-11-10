@@ -5,9 +5,11 @@ import "fmt"
 type ObjectType int
 
 const (
-	INTEGER ObjectType = iota
+	NUMBER ObjectType = iota
 	BOOLEAN
 	NULL
+	RETURN_VALUE
+	ERROR
 )
 
 type Object interface {
@@ -21,7 +23,7 @@ type (
 )
 
 func (n Number) Type() ObjectType {
-	return INTEGER
+	return NUMBER
 }
 
 func (b Boolean) Type() ObjectType {
@@ -46,10 +48,36 @@ func (n *Null) Inspect() string {
 	return "null"
 }
 
+type ReturnValue struct {
+	Value Object
+}
+
+func (rv *ReturnValue) Type() ObjectType {
+	return RETURN_VALUE
+}
+
+func (rv *ReturnValue) Inspect() string {
+	return rv.Value.Inspect()
+}
+
+type Error struct {
+	Message string
+}
+
+func (e *Error) Type() ObjectType {
+	return ERROR
+}
+
+func (e *Error) Inspect() string {
+	return "ERROR: " + e.Message
+}
+
 var objects = map[ObjectType]string{
-	INTEGER: "INTEGER",
-	BOOLEAN: "BOOLEAN",
-	NULL:    "NULL",
+	NUMBER:       "INTEGER",
+	BOOLEAN:      "BOOLEAN",
+	NULL:         "NULL",
+	RETURN_VALUE: "RETURN_VALUE",
+	ERROR:        "ERROR",
 }
 
 func (ot ObjectType) String() string {

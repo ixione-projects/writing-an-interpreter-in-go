@@ -19,7 +19,7 @@ type NodeTest interface {
 }
 
 func (p ProgramTest) node()              {}
-func (ls LetStatementTest) node()        {}
+func (ls LetDeclarationTest) node()      {}
 func (rs ReturnStatementTest) node()     {}
 func (es ExpressionStatementTest) node() {}
 func (bs BlockStatementTest) node()      {}
@@ -41,12 +41,12 @@ type StatementTest interface {
 	statementNode()
 }
 
-func (ls LetStatementTest) statementNode()        {}
+func (ls LetDeclarationTest) statementNode()      {}
 func (rs ReturnStatementTest) statementNode()     {}
 func (es ExpressionStatementTest) statementNode() {}
 func (bs BlockStatementTest) statementNode()      {}
 
-type LetStatementTest struct {
+type LetDeclarationTest struct {
 	Name   IdentifierTest
 	Value  ExpressionTest
 	String string
@@ -122,15 +122,15 @@ func TestLetStatement(t *testing.T) {
 			let foobar = 838383;`,
 			program: ProgramTest{
 				[]StatementTest{
-					LetStatementTest{
+					LetDeclarationTest{
 						"x", NumberLiteralTest(5),
 						"let x=5;",
 					},
-					LetStatementTest{
+					LetDeclarationTest{
 						"y", NumberLiteralTest(10),
 						"let y=10;",
 					},
-					LetStatementTest{
+					LetDeclarationTest{
 						"foobar", NumberLiteralTest(838383),
 						"let foobar=838383;",
 					},
@@ -1077,8 +1077,8 @@ func testProgram(t *testing.T, i int, expected ProgramTest, actual *ast.Program)
 
 func testStatement(t *testing.T, i, j int, expected StatementTest, actual ast.Statement) bool {
 	switch expected := expected.(type) {
-	case LetStatementTest:
-		if !testLetStatement(t, i, j, expected, actual) {
+	case LetDeclarationTest:
+		if !testLetDeclaration(t, i, j, expected, actual) {
 			return false
 		}
 	case ReturnStatementTest:
@@ -1099,15 +1099,15 @@ func testStatement(t *testing.T, i, j int, expected StatementTest, actual ast.St
 	return true
 }
 
-func testLetStatement(t *testing.T, i, j int, expected LetStatementTest, actual ast.Statement) bool {
+func testLetDeclaration(t *testing.T, i, j int, expected LetDeclarationTest, actual ast.Statement) bool {
 	if "let" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.LetStatement.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "let", actual.TokenLiteral())
 		return false
 	}
 
-	stmt, ok := actual.(*ast.LetStatement)
+	stmt, ok := actual.(*ast.LetDeclaration)
 	if !ok {
-		t.Errorf("test[%d][%d] - actual.(*ast.LetStatement) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.LetStatement{}, actual)
+		t.Errorf("test[%d][%d] - actual.(*ast.LetStatement) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.LetDeclaration{}, actual)
 		return false
 	}
 

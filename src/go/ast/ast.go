@@ -7,8 +7,28 @@ import (
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/token"
 )
 
+type NodeType int
+
+const (
+	PROGRAM NodeType = iota
+	LET_DECLARATION
+	RETURN_STATEMENT
+	EXPRESSION_STATEMENT
+	BLOCK_STATEMENT
+	PREFIX_EXPRESSION
+	INFIX_EXPRESSION
+	IF_EXPRESSION
+	FUNCTION_LITERAL
+	CALL_EXPRESSION
+	IDENTIFIER
+	NUMBER_LITERAL
+	BOOLEAN_LITERAL
+)
+
 type Node interface {
 	TokenLiteral() string
+
+	Type() NodeType
 	String() string
 }
 
@@ -21,6 +41,10 @@ func (p *Program) TokenLiteral() string {
 		return ""
 	}
 	return p.Statements[0].TokenLiteral()
+}
+
+func (p *Program) Type() NodeType {
+	return PROGRAM
 }
 
 func (p *Program) String() string {
@@ -36,22 +60,26 @@ type Statement interface {
 	statementNode()
 }
 
-func (ls *LetStatement) statementNode()        {}
+func (ls *LetDeclaration) statementNode()      {}
 func (rs *ReturnStatement) statementNode()     {}
 func (es *ExpressionStatement) statementNode() {}
 func (bs *BlockStatement) statementNode()      {}
 
-type LetStatement struct {
+type LetDeclaration struct {
 	Token token.Token
 	Name  *Identifier
 	Value Expression
 }
 
-func (ls *LetStatement) TokenLiteral() string {
+func (ls *LetDeclaration) TokenLiteral() string {
 	return ls.Token.Literal
 }
 
-func (ls *LetStatement) String() string {
+func (ls *LetDeclaration) Type() NodeType {
+	return LET_DECLARATION
+}
+
+func (ls *LetDeclaration) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(ls.TokenLiteral())
@@ -73,6 +101,10 @@ type ReturnStatement struct {
 
 func (rs *ReturnStatement) TokenLiteral() string {
 	return rs.Token.Literal
+}
+
+func (rs *ReturnStatement) Type() NodeType {
+	return RETURN_STATEMENT
 }
 
 func (rs *ReturnStatement) String() string {
@@ -97,6 +129,10 @@ func (es *ExpressionStatement) TokenLiteral() string {
 	return es.Token.Literal
 }
 
+func (es *ExpressionStatement) Type() NodeType {
+	return EXPRESSION_STATEMENT
+}
+
 func (es *ExpressionStatement) String() string {
 	var out bytes.Buffer
 
@@ -115,6 +151,10 @@ type BlockStatement struct {
 
 func (bs *BlockStatement) TokenLiteral() string {
 	return bs.Token.Literal
+}
+
+func (bs *BlockStatement) Type() NodeType {
+	return BLOCK_STATEMENT
 }
 
 func (bs *BlockStatement) String() string {
@@ -151,6 +191,10 @@ func (pe *PrefixExpression) TokenLiteral() string {
 	return pe.Token.Literal
 }
 
+func (pe *PrefixExpression) Type() NodeType {
+	return PREFIX_EXPRESSION
+}
+
 func (pe *PrefixExpression) String() string {
 	var out bytes.Buffer
 
@@ -171,6 +215,10 @@ type InfixExpression struct {
 
 func (ie *InfixExpression) TokenLiteral() string {
 	return ie.Token.Literal
+}
+
+func (ie *InfixExpression) Type() NodeType {
+	return INFIX_EXPRESSION
 }
 
 func (ie *InfixExpression) String() string {
@@ -194,6 +242,10 @@ type IfExpression struct {
 
 func (ie *IfExpression) TokenLiteral() string {
 	return ie.Token.Literal
+}
+
+func (ie *IfExpression) Type() NodeType {
+	return IF_EXPRESSION
 }
 
 func (ie *IfExpression) String() string {
@@ -220,6 +272,10 @@ type FunctionLiteral struct {
 
 func (fl *FunctionLiteral) TokenLiteral() string {
 	return fl.Token.Literal
+}
+
+func (fl *FunctionLiteral) Type() NodeType {
+	return FUNCTION_LITERAL
 }
 
 func (fl *FunctionLiteral) String() string {
@@ -249,6 +305,10 @@ func (ce *CallExpression) TokenLiteral() string {
 	return ce.Token.Literal
 }
 
+func (ce *CallExpression) Type() NodeType {
+	return CALL_EXPRESSION
+}
+
 func (ce *CallExpression) String() string {
 	var out bytes.Buffer
 
@@ -274,6 +334,10 @@ func (i *Identifier) TokenLiteral() string {
 	return i.Token.Literal
 }
 
+func (i *Identifier) Type() NodeType {
+	return IDENTIFIER
+}
+
 func (i *Identifier) String() string {
 	return i.Value
 }
@@ -285,6 +349,10 @@ type NumberLiteral struct {
 
 func (nl *NumberLiteral) TokenLiteral() string {
 	return nl.Token.Literal
+}
+
+func (nl *NumberLiteral) Type() NodeType {
+	return NUMBER_LITERAL
 }
 
 func (nl *NumberLiteral) String() string {
@@ -300,6 +368,30 @@ func (bl *BooleanLiteral) TokenLiteral() string {
 	return bl.Token.Literal
 }
 
+func (bl *BooleanLiteral) Type() NodeType {
+	return BOOLEAN_LITERAL
+}
+
 func (bl *BooleanLiteral) String() string {
 	return bl.Token.Literal
+}
+
+var nodes = map[NodeType]string{
+	PROGRAM:              "PROGRAM",
+	LET_DECLARATION:      "LET_DECLARATION",
+	RETURN_STATEMENT:     "RETURN_STATEMENT",
+	EXPRESSION_STATEMENT: "EXPRESSION_STATEMENT",
+	BLOCK_STATEMENT:      "BLOCK_STATEMENT",
+	PREFIX_EXPRESSION:    "PREFIX_EXPRESSION",
+	INFIX_EXPRESSION:     "INFIX_EXPRESSION",
+	IF_EXPRESSION:        "IF_EXPRESSION",
+	FUNCTION_LITERAL:     "FUNCTION_LITERAL",
+	CALL_EXPRESSION:      "CALL_EXPRESSION",
+	IDENTIFIER:           "IDENTIFIER",
+	NUMBER_LITERAL:       "NUMBER_LITERAL",
+	BOOLEAN_LITERAL:      "BOOLEAN_LITERAL",
+}
+
+func (nt NodeType) String() string {
+	return nodes[nt]
 }

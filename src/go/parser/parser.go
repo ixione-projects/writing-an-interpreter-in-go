@@ -92,7 +92,7 @@ func (p *Parser) ParseProgram() *ast.Program {
 	}
 
 	statements := []ast.Statement{}
-	for p.tok.Type != token.EOF {
+	for ; p.tok.Type != token.EOF; p.next() {
 		p.tok = p.peek0()
 
 		stmt := p.parseStatement()
@@ -122,12 +122,12 @@ func (p *Parser) parseStatement() ast.Statement {
 	}
 }
 
-func (p *Parser) parseLetStatement() *ast.LetStatement {
+func (p *Parser) parseLetStatement() *ast.LetDeclaration {
 	if p.debug {
 		defer un(trace("ParseLetStatement"))
 	}
 
-	stmt := &ast.LetStatement{Token: p.tok}
+	stmt := &ast.LetDeclaration{Token: p.tok}
 	if !p.expect(token.IDENT) {
 		return nil
 	}
@@ -141,9 +141,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 
 	stmt.Value = p.parseExpression(ASSIGNMENT - 1) // right associativity
 
-	p.next()
-
-	if p.tok.Type == token.SEMI {
+	if p.peek1().Type == token.SEMI {
 		p.next()
 	}
 
@@ -161,9 +159,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 
 	stmt.ReturnValue = p.parseExpression(ASSIGNMENT - 1) // right associativity
 
-	p.next()
-
-	if p.tok.Type == token.SEMI {
+	if p.peek1().Type == token.SEMI {
 		p.next()
 	}
 
@@ -178,9 +174,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	stmt := &ast.ExpressionStatement{Token: p.tok}
 	stmt.Expression = p.parseExpression(ASSIGNMENT - 1) // right associativity
 
-	p.next()
-
-	if p.tok.Type == token.SEMI {
+	if p.peek1().Type == token.SEMI {
 		p.next()
 	}
 
@@ -197,7 +191,7 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	p.next()
 
 	statements := []ast.Statement{}
-	for p.tok.Type != token.RBRACE && p.tok.Type != token.EOF {
+	for ; p.tok.Type != token.RBRACE && p.tok.Type != token.EOF; p.next() {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			statements = append(statements, stmt)
@@ -210,7 +204,7 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 		return nil
 	}
 
-	return block // parseBlockStatement follows the expression protocol
+	return block
 }
 
 func (p *Parser) parseExpression(rightPrecedence precedence) ast.Expression {
