@@ -23,6 +23,7 @@ const (
 	IDENTIFIER
 	NUMBER_LITERAL
 	BOOLEAN_LITERAL
+	STRING_LITERAL
 )
 
 type Node interface {
@@ -180,6 +181,7 @@ func (ce *CallExpression) expressionNode()   {}
 func (i *Identifier) expressionNode()        {}
 func (nl *NumberLiteral) expressionNode()    {}
 func (bl *BooleanLiteral) expressionNode()   {}
+func (sl *StringLiteral) expressionNode()    {}
 
 type PrefixExpression struct {
 	Token    token.Token
@@ -376,6 +378,23 @@ func (bl *BooleanLiteral) String() string {
 	return bl.Token.Literal
 }
 
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (sl *StringLiteral) TokenLiteral() string {
+	return sl.Token.Literal
+}
+
+func (sl *StringLiteral) Type() NodeType {
+	return STRING_LITERAL
+}
+
+func (sl *StringLiteral) String() string {
+	return sl.Token.Literal
+}
+
 var nodes = map[NodeType]string{
 	PROGRAM:              "PROGRAM",
 	LET_DECLARATION:      "LET_DECLARATION",
@@ -390,6 +409,7 @@ var nodes = map[NodeType]string{
 	IDENTIFIER:           "IDENTIFIER",
 	NUMBER_LITERAL:       "NUMBER_LITERAL",
 	BOOLEAN_LITERAL:      "BOOLEAN_LITERAL",
+	STRING_LITERAL:       "STRING_LITERAL",
 }
 
 func (nt NodeType) String() string {

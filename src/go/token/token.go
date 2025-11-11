@@ -15,6 +15,7 @@ const (
 	// Identifiers + literals
 	IDENT  // add, foobar, x, y, ...
 	NUMBER // 1343456
+	STRING
 
 	// Operators
 	ASSIGN
@@ -52,6 +53,7 @@ var tokens = [...]string{
 	EOF:     "EOF",
 	IDENT:   "IDENT",
 	NUMBER:  "NUMBER",
+	STRING:  "STRING",
 	ASSIGN:  "ASSIGN",
 	PLUS:    "PLUS",
 	MINUS:   "MINUS",

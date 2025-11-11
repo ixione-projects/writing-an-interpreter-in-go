@@ -58,6 +58,7 @@ func NewParser(input string, debug bool) *Parser {
 		token.EOF:     {nil, nil, NONE},
 		token.IDENT:   {p.parseIdentifier, nil, NONE},
 		token.NUMBER:  {p.parseNumberLiteral, nil, NONE},
+		token.STRING:  {p.parseStringLiteral, nil, NONE},
 		token.ASSIGN:  {nil, nil, NONE},
 		token.PLUS:    {nil, p.parseInfixExpression, TERM},
 		token.MINUS:   {p.parsePrefixExpression, p.parseInfixExpression, TERM},
@@ -389,6 +390,17 @@ func (p *Parser) parseNumberLiteral() ast.Expression {
 		return nil
 	}
 	return &ast.NumberLiteral{Token: p.tok, Value: value}
+}
+
+func (p *Parser) parseStringLiteral() ast.Expression {
+	if p.debug {
+		defer un(trace("ParseStringLiteral"))
+	}
+
+	return &ast.StringLiteral{
+		Token: p.tok,
+		Value: p.tok.Literal[1 : len(p.tok.Literal)-1],
+	}
 }
 
 func (p *Parser) parseBooleanLiteral() ast.Expression {

@@ -42,6 +42,8 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 		return evaluateNumberLiteral(node.(*ast.NumberLiteral))
 	case ast.BOOLEAN_LITERAL:
 		return evaluateBooleanLiteral(node.(*ast.BooleanLiteral))
+	case ast.STRING_LITERAL:
+		return evaluateStringLiteral(node.(*ast.StringLiteral))
 	}
 	return nil, nil
 }
@@ -145,6 +147,15 @@ func evaluateInfixExpression(node *ast.InfixExpression, env *object.Environment)
 		case "!=":
 			return toBoolean(left.(object.Number) != right.(object.Number)), nil
 		}
+	case left.Type() == object.STRING && right.Type() == object.STRING:
+		switch node.Operator {
+		case "+":
+			return object.String(left.(object.String) + right.(object.String)), nil
+		case "==":
+			return toBoolean(left.(object.String) == right.(object.String)), nil
+		case "!=":
+			return toBoolean(left.(object.String) != right.(object.String)), nil
+		}
 	case left.Type() != right.Type():
 		return nil, toError("type mismatch: %s %s %s", left.Type(), node.Operator, right.Type())
 	case node.Operator == "==":
@@ -219,6 +230,10 @@ func evaluateBooleanLiteral(node *ast.BooleanLiteral) (object.Object, object.Int
 	return toBoolean(node.Value), nil
 }
 
+func evaluateStringLiteral(node *ast.StringLiteral) (object.Object, object.Interruption) {
+	return object.String(node.Value), nil
+}
+
 func toBoolean(value bool) object.Boolean {
 	if value {
 		return TRUE
@@ -237,6 +252,8 @@ func isTruthy(o object.Object) object.Boolean {
 	case o == NULL:
 		return FALSE
 	case o.Type() == object.NUMBER && o.(object.Number) == 0:
+		return FALSE
+	case o.Type() == object.STRING && o.(object.String) == "":
 		return FALSE
 	default:
 		return TRUE

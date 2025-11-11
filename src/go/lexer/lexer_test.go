@@ -143,6 +143,16 @@ func TestNextToken(t *testing.T) {
 				{Type: token.EOF, Literal: ""},
 			},
 		},
+		{
+			input: `
+			"foobar"
+			"foo bar"`,
+			tokens: []token.Token{
+				{Type: token.STRING, Literal: "\"foobar\""},
+				{Type: token.STRING, Literal: "\"foo bar\""},
+				{Type: token.EOF, Literal: ""},
+			},
+		},
 	}
 
 	for i, test := range tests {

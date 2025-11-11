@@ -20,6 +20,7 @@ type ObjectTest interface {
 func (f FunctionTest) object() {}
 func (n NumberTest) object()   {}
 func (b BooleanTest) object()  {}
+func (s StringTest) object()   {}
 func (n NullTest) object()     {}
 
 type FunctionTest struct {
@@ -29,6 +30,7 @@ type FunctionTest struct {
 type (
 	NumberTest  float64
 	BooleanTest bool
+	StringTest  string
 )
 
 type NullTest struct{}
@@ -42,7 +44,7 @@ var suites = []struct {
 	tests []EvaluatorTest
 }{
 	{
-		name: "TestEvaluateNumber",
+		name: "TestNumber",
 		tests: []EvaluatorTest{
 			{
 				input:  `5`,
@@ -222,7 +224,7 @@ var suites = []struct {
 		},
 	},
 	{
-		name: "TestEvaluateBoolean",
+		name: "TestBoolean",
 		tests: []EvaluatorTest{
 			{
 				input:  `true`,
@@ -327,7 +329,7 @@ var suites = []struct {
 		},
 	},
 	{
-		name: "TestEvaluateNull",
+		name: "TestNull",
 		tests: []EvaluatorTest{
 			{
 				input:  `if (false) { 10 }`,
@@ -340,7 +342,7 @@ var suites = []struct {
 		},
 	},
 	{
-		name: "TestEvaluateError",
+		name: "TestError",
 		tests: []EvaluatorTest{
 			{
 				input: `5 + true;`,
@@ -381,14 +383,31 @@ var suites = []struct {
 				input: `foobar`,
 				error: ErrorTest{"identifier not found: foobar"},
 			},
+			{
+				input: `"Hello" - "World"`,
+				error: ErrorTest{"unknown operator: STRING - STRING"},
+			},
 		},
 	},
 	{
-		name: "TestEvaluateFunction",
+		name: "TestFunction",
 		tests: []EvaluatorTest{
 			{
 				input:  `fn(x) { x + 2; };`,
 				object: FunctionTest{"<fn (x)>"},
+			},
+		},
+	},
+	{
+		name: "TestString",
+		tests: []EvaluatorTest{
+			{
+				input:  `"Hello World!"`,
+				object: StringTest("Hello World!"),
+			},
+			{
+				input:  `"Hello" + " " + "World!"`,
+				object: StringTest("Hello World!"),
 			},
 		},
 	},
@@ -443,6 +462,10 @@ func testObject(tb testing.TB, i int, expected ObjectTest, actual object.Object)
 		if !testBoolean(tb, i, expected, actual) {
 			return false
 		}
+	case StringTest:
+		if !testString(tb, i, expected, actual) {
+			return false
+		}
 	case NullTest:
 		if !testNull(tb, i, expected, actual) {
 			return false
@@ -492,6 +515,21 @@ func testBoolean(tb testing.TB, i int, expected BooleanTest, actual object.Objec
 
 	if bool(expected) != bool(value) {
 		tb.Errorf("test[%d] - object.Boolean ==> expected: <%t> but was: <%t>", i, bool(expected), bool(value))
+		return false
+	}
+
+	return true
+}
+
+func testString(tb testing.TB, i int, expected StringTest, actual object.Object) bool {
+	value, ok := actual.(object.String)
+	if !ok {
+		tb.Errorf("test[%d] - actual.(object.String) ==> unexpected type, expected: <%T> but was: <%T>", i, object.String(""), actual)
+		return false
+	}
+
+	if string(expected) != string(value) {
+		tb.Errorf("test[%d] - object.String ==> expected: <%s> but was: <%s>", i, string(expected), string(value))
 		return false
 	}
 

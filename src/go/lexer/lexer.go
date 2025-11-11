@@ -100,6 +100,8 @@ func (l *Lexer) NextToken() token.Token {
 		case '}':
 			l.next()
 			return l.emit(token.RBRACE)
+		case '"':
+			return l.string()
 		default:
 			if isAlpha(l.ch) {
 				return l.ident()
@@ -148,6 +150,27 @@ func (l *Lexer) number() token.Token {
 
 	return token.Token{
 		Type:    token.NUMBER,
+		Literal: l.input[l.start:l.current],
+	}
+}
+
+func (l *Lexer) string() token.Token {
+	l.next()
+	for l.ch != '"' && l.ch != 0 {
+		l.next()
+	}
+
+	if l.ch != '"' {
+		return token.Token{
+			Type:    token.ILLEGAL,
+			Literal: l.input[l.start:l.current],
+		}
+	}
+
+	l.next()
+
+	return token.Token{
+		Type:    token.STRING,
 		Literal: l.input[l.start:l.current],
 	}
 }

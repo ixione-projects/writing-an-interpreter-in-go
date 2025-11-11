@@ -13,6 +13,7 @@ const (
 	FUNCTION ObjectType = iota
 	NUMBER
 	BOOLEAN
+	STRING
 	NULL
 )
 
@@ -41,6 +42,7 @@ func (f *Function) Inspect() string {
 type (
 	Number  float64
 	Boolean bool
+	String  string
 )
 
 func (n Number) Type() ObjectType {
@@ -51,12 +53,20 @@ func (b Boolean) Type() ObjectType {
 	return BOOLEAN
 }
 
+func (s String) Type() ObjectType {
+	return STRING
+}
+
 func (n Number) Inspect() string {
 	return fmt.Sprintf("%g", float64(n))
 }
 
 func (b Boolean) Inspect() string {
 	return fmt.Sprintf("%t", bool(b))
+}
+
+func (s String) Inspect() string {
+	return "\"" + string(s) + "\""
 }
 
 type Null struct{}
@@ -99,6 +109,7 @@ func (e *Error) Type() InterruptionType {
 var objects = map[ObjectType]string{
 	NUMBER:  "INTEGER",
 	BOOLEAN: "BOOLEAN",
+	STRING:  "STRING",
 	NULL:    "NULL",
 }
 
