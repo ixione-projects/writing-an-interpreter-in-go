@@ -1,20 +1,41 @@
 package object
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
+)
 
 type ObjectType int
 
 const (
-	NUMBER ObjectType = iota
+	FUNCTION ObjectType = iota
+	NUMBER
 	BOOLEAN
 	NULL
-	RETURN_VALUE
-	ERROR
 )
 
 type Object interface {
 	Type() ObjectType
 	Inspect() string
+}
+
+type Function struct {
+	Declaration *ast.FunctionLiteral
+	Closure     *Environment
+}
+
+func (f *Function) Type() ObjectType {
+	return FUNCTION
+}
+
+func (f *Function) Inspect() string {
+	params := []string{}
+	for _, param := range f.Declaration.Parameters {
+		params = append(params, param.Value)
+	}
+	return "<fn (" + strings.Join(params, ",") + ")>"
 }
 
 type (
@@ -48,38 +69,48 @@ func (n *Null) Inspect() string {
 	return "null"
 }
 
+type InterruptionType int
+
+const (
+	RETURN_VALUE InterruptionType = iota
+	ERROR
+)
+
+type Interruption interface {
+	Type() InterruptionType
+}
+
 type ReturnValue struct {
 	Value Object
 }
 
-func (rv *ReturnValue) Type() ObjectType {
+func (rv *ReturnValue) Type() InterruptionType {
 	return RETURN_VALUE
-}
-
-func (rv *ReturnValue) Inspect() string {
-	return rv.Value.Inspect()
 }
 
 type Error struct {
 	Message string
 }
 
-func (e *Error) Type() ObjectType {
+func (e *Error) Type() InterruptionType {
 	return ERROR
 }
 
-func (e *Error) Inspect() string {
-	return "ERROR: " + e.Message
-}
-
 var objects = map[ObjectType]string{
-	NUMBER:       "INTEGER",
-	BOOLEAN:      "BOOLEAN",
-	NULL:         "NULL",
-	RETURN_VALUE: "RETURN_VALUE",
-	ERROR:        "ERROR",
+	NUMBER:  "INTEGER",
+	BOOLEAN: "BOOLEAN",
+	NULL:    "NULL",
 }
 
 func (ot ObjectType) String() string {
 	return objects[ot]
+}
+
+var interruptions = map[InterruptionType]string{
+	RETURN_VALUE: "RETURN_VALUE",
+	ERROR:        "ERROR",
+}
+
+func (it InterruptionType) String() string {
+	return interruptions[it]
 }

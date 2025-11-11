@@ -44,8 +44,8 @@ type parseRule struct {
 	Precedence    precedence
 }
 
-func New(input string, debug bool) *Parser {
-	l := lexer.New(input)
+func NewParser(input string, debug bool) *Parser {
+	l := lexer.NewLexer(input)
 	p := &Parser{
 		l:      l,
 		errors: []string{},

@@ -146,7 +146,7 @@ func TestNextToken(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		l := New(test.input)
+		l := NewLexer(test.input)
 		for j, expected := range test.tokens {
 			actual := l.NextToken()
 			if expected.Type != actual.Type {
@@ -227,7 +227,7 @@ func TestToken(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		l := New(test.input)
+		l := NewLexer(test.input)
 		token := l.Token(test.index)
 		if test.lookahead.Type != token.Type {
 			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.lookahead.Type, token.Type)

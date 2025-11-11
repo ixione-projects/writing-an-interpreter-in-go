@@ -137,17 +137,17 @@ func TestLetStatement(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	input: `
-		// 	let x 5;
-		// 	let y 10;
-		// 	let 838383;`,
-		// 	errors: []string{
-		// 		"expected next token to be <ASSIGN> but was <NUMBER>",
-		// 		"expected next token to be <ASSIGN> but was <NUMBER>",
-		// 		"expected next token to be <IDENT> but was <NUMBER>",
-		// 	},
-		// },
+		{
+			input: `
+			let x 5;
+			let y 10;
+			let 838383;`,
+			errors: []string{
+				"expected next token to be <ASSIGN> but was <NUMBER>",
+				"expected next token to be <ASSIGN> but was <NUMBER>",
+				"expected next token to be <IDENT> but was <NUMBER>",
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -1031,7 +1031,7 @@ func TestExpressionStatement(t *testing.T) {
 }
 
 func testParser(t *testing.T, i int, test ParserTest) {
-	p := New(test.input, test.debug)
+	p := NewParser(test.input, test.debug)
 	program := p.ParseProgram()
 
 	if len(test.errors) != len(p.Errors()) {
