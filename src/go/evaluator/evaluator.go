@@ -2,6 +2,8 @@ package evaluator
 
 import (
 	"fmt"
+	"math"
+	"slices"
 
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
@@ -34,8 +36,12 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 		return evaluateIfExpression(node.(*ast.IfExpression), env)
 	case ast.FUNCTION_LITERAL:
 		return evaluateFunctionLiteral(node.(*ast.FunctionLiteral), env)
+	case ast.ASSIGNMENT_EXPRESSION:
+		return evaluateAssignmentExpression(node.(*ast.AssignmentExpression), env)
 	case ast.CALL_EXPRESSION:
 		return evaluateCallExpression(node.(*ast.CallExpression), env)
+	case ast.SUBSCRIPT_EXPRESSION:
+		return evaluateSubscriptExpression(node.(*ast.SubscriptExpression), env)
 	case ast.IDENTIFIER:
 		return evaluateIdentifier(node.(*ast.Identifier), env)
 	case ast.NUMBER_LITERAL:
@@ -44,6 +50,8 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 		return evaluateBooleanLiteral(node.(*ast.BooleanLiteral))
 	case ast.STRING_LITERAL:
 		return evaluateStringLiteral(node.(*ast.StringLiteral))
+	case ast.ARRAY_LITERAL:
+		return evaluateArrayLiteral(node.(*ast.ArrayLiteral), env)
 	}
 	return nil, nil
 }
@@ -180,34 +188,130 @@ func evaluateIfExpression(node *ast.IfExpression, env *object.Environment) (obje
 	return NULL, nil
 }
 
+func evaluateAssignmentExpression(node *ast.AssignmentExpression, env *object.Environment) (object.Object, object.Interruption) {
+	rvalue, interrupt := Evaluate(node.RValue, env)
+	if interrupt != nil {
+		return nil, interrupt
+	}
+
+	switch lvalue := node.LValue.(type) {
+	case *ast.Identifier:
+		if _, found := env.Get(lvalue.Value); found {
+			env.Set(lvalue.Value, rvalue)
+			return rvalue, nil
+		}
+
+		return nil, toError("identifier not found: %s", lvalue.Value)
+	case *ast.SubscriptExpression:
+		baseValue, interrupt := Evaluate(lvalue.Base, env)
+		if interrupt != nil {
+			return nil, interrupt
+		}
+
+		subscriptValue, interrupt := Evaluate(lvalue.Subscript, env)
+		if interrupt != nil {
+			return nil, interrupt
+		}
+
+		subscript, ok := subscriptValue.(object.Number)
+		if !ok {
+			return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
+		}
+
+		switch base := baseValue.(type) {
+		case *object.Array:
+			index, valid := toNativeInt(subscript)
+			if !valid || index < 0 {
+				return nil, toError("unexpected subscript value: %s", subscript.Inspect())
+			}
+
+			if index >= cap(base.Elements) {
+				current := cap(base.Elements)
+				base.Elements = slices.Grow(base.Elements, index+1-current)
+				base.Elements = base.Elements[:cap(base.Elements)]
+				for i := current; i < index; i += 1 {
+					base.Elements[i] = NULL
+				}
+			} else {
+				base.Elements = base.Elements[:cap(base.Elements)]
+			}
+			base.Elements[index] = rvalue
+
+			return rvalue, nil
+		default:
+			return nil, toError("unknown operator: %s[%s]", base.Type(), subscript.Type())
+		}
+	default:
+		panic(fmt.Errorf("unknown lvalue type: %s", node.LValue.Type()))
+	}
+}
+
 func evaluateCallExpression(node *ast.CallExpression, env *object.Environment) (object.Object, object.Interruption) {
 	value, interrupt := Evaluate(node.Callee, env)
 	if interrupt != nil {
 		return nil, interrupt
 	}
 
-	function, ok := value.(*object.Function)
-	if !ok {
-		return nil, toError("unknown operator: %s()", function.Type())
-	}
+	switch function := value.(type) {
+	case *object.Function:
+		environment := object.NewEnvironment(function.Closure)
+		for i, parameter := range function.Declaration.Parameters {
+			value, interrupt := Evaluate(node.Arguments[i], env)
+			if interrupt != nil {
+				return nil, interrupt
+			}
+			environment.Set(parameter.Value, value)
+		}
 
-	environment := object.NewEnvironment(function.Closure)
-	for i, parameter := range function.Declaration.Parameters {
-		value, interrupt := Evaluate(node.Arguments[i], env)
+		result, interrupt := Evaluate(function.Declaration.Body, environment)
 		if interrupt != nil {
+			if interrupt.Type() == object.RETURN_VALUE {
+				return interrupt.(*object.ReturnValue).Value, nil
+			}
 			return nil, interrupt
 		}
-		environment.Set(parameter.Value, value)
-	}
-
-	result, interrupt := Evaluate(function.Declaration.Body, environment)
-	if interrupt != nil {
-		if interrupt.Type() == object.RETURN_VALUE {
-			return interrupt.(*object.ReturnValue).Value, nil
+		return result, nil
+	case *object.Builtin:
+		args := []object.Object{}
+		for _, arg := range node.Arguments {
+			value, interrupt := Evaluate(arg, env)
+			if interrupt != nil {
+				return nil, interrupt
+			}
+			args = append(args, value)
 		}
+		return function.Fn(args...)
+	default:
+		return nil, toError("unknown operator: %s()", function.Type())
+	}
+}
+
+func evaluateSubscriptExpression(node *ast.SubscriptExpression, env *object.Environment) (object.Object, object.Interruption) {
+	baseValue, interrupt := Evaluate(node.Base, env)
+	if interrupt != nil {
 		return nil, interrupt
 	}
-	return result, nil
+
+	subscriptValue, interrupt := Evaluate(node.Subscript, env)
+	if interrupt != nil {
+		return nil, interrupt
+	}
+
+	subscript, ok := subscriptValue.(object.Number)
+	if !ok {
+		return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
+	}
+
+	switch base := baseValue.(type) {
+	case *object.Array:
+		index, valid := toNativeInt(subscript)
+		if !valid || index < 0 || index >= len(base.Elements) {
+			return NULL, nil
+		}
+		return base.Elements[index], nil
+	default:
+		return nil, toError("unknown operator: %s[%s]", base.Type(), subscript.Type())
+	}
 }
 
 func evaluateFunctionLiteral(node *ast.FunctionLiteral, env *object.Environment) (object.Object, object.Interruption) {
@@ -215,11 +319,15 @@ func evaluateFunctionLiteral(node *ast.FunctionLiteral, env *object.Environment)
 }
 
 func evaluateIdentifier(node *ast.Identifier, env *object.Environment) (object.Object, object.Interruption) {
-	value, found := env.Get(node.Value)
-	if !found {
-		return nil, toError("identifier not found: %s", node.Value)
+	if value, found := env.Get(node.Value); found {
+		return value, nil
 	}
-	return value, nil
+
+	if builtin, found := builtins[node.Value]; found {
+		return builtin, nil
+	}
+
+	return nil, toError("identifier not found: %s", node.Value)
 }
 
 func evaluateNumberLiteral(node *ast.NumberLiteral) (object.Object, object.Interruption) {
@@ -234,6 +342,18 @@ func evaluateStringLiteral(node *ast.StringLiteral) (object.Object, object.Inter
 	return object.String(node.Value), nil
 }
 
+func evaluateArrayLiteral(node *ast.ArrayLiteral, env *object.Environment) (object.Object, object.Interruption) {
+	elements := []object.Object{}
+	for _, element := range node.Elements {
+		value, interrupt := Evaluate(element, env)
+		if interrupt != nil {
+			return nil, interrupt
+		}
+		elements = append(elements, value)
+	}
+	return &object.Array{Elements: elements}, nil
+}
+
 func toBoolean(value bool) object.Boolean {
 	if value {
 		return TRUE
@@ -245,15 +365,24 @@ func toError(format string, args ...any) *object.Error {
 	return &object.Error{Message: fmt.Sprintf(format, args...)}
 }
 
+func toNativeInt(subscript object.Number) (int, bool) {
+	if subscript == object.Number(math.Trunc(float64(subscript))) {
+		return int(subscript), true
+	}
+	return 0, false
+}
+
 func isTruthy(o object.Object) object.Boolean {
 	switch {
 	case o == FALSE:
 		return FALSE
 	case o == NULL:
 		return FALSE
-	case o.Type() == object.NUMBER && o.(object.Number) == 0:
+	case o.Type() == object.NUMBER && o.(object.Number) == 0.0:
 		return FALSE
 	case o.Type() == object.STRING && o.(object.String) == "":
+		return FALSE
+	case o.Type() == object.ARRAY && len(o.(*object.Array).Elements) == 0:
 		return FALSE
 	default:
 		return TRUE

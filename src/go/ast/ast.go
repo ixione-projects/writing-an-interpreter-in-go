@@ -20,10 +20,13 @@ const (
 	IF_EXPRESSION
 	FUNCTION_LITERAL
 	CALL_EXPRESSION
+	ASSIGNMENT_EXPRESSION
+	SUBSCRIPT_EXPRESSION
 	IDENTIFIER
 	NUMBER_LITERAL
 	BOOLEAN_LITERAL
 	STRING_LITERAL
+	ARRAY_LITERAL
 )
 
 type Node interface {
@@ -51,7 +54,7 @@ func (p *Program) Type() NodeType {
 func (p *Program) String() string {
 	var out bytes.Buffer
 	for _, s := range p.Statements {
-		out.WriteString(s.String() + "\n")
+		out.WriteString(s.String())
 	}
 	return out.String()
 }
@@ -173,15 +176,18 @@ type Expression interface {
 	expressionNode()
 }
 
-func (pe *PrefixExpression) expressionNode() {}
-func (ie *InfixExpression) expressionNode()  {}
-func (ie *IfExpression) expressionNode()     {}
-func (fl *FunctionLiteral) expressionNode()  {}
-func (ce *CallExpression) expressionNode()   {}
-func (i *Identifier) expressionNode()        {}
-func (nl *NumberLiteral) expressionNode()    {}
-func (bl *BooleanLiteral) expressionNode()   {}
-func (sl *StringLiteral) expressionNode()    {}
+func (pe *PrefixExpression) expressionNode()     {}
+func (ie *InfixExpression) expressionNode()      {}
+func (ie *IfExpression) expressionNode()         {}
+func (fl *FunctionLiteral) expressionNode()      {}
+func (ce *CallExpression) expressionNode()       {}
+func (ae *AssignmentExpression) expressionNode() {}
+func (ie *SubscriptExpression) expressionNode()  {}
+func (i *Identifier) expressionNode()            {}
+func (nl *NumberLiteral) expressionNode()        {}
+func (bl *BooleanLiteral) expressionNode()       {}
+func (sl *StringLiteral) expressionNode()        {}
+func (al *ArrayLiteral) expressionNode()         {}
 
 type PrefixExpression struct {
 	Token    token.Token
@@ -327,6 +333,58 @@ func (ce *CallExpression) String() string {
 	return out.String()
 }
 
+type AssignmentExpression struct {
+	Token  token.Token
+	LValue Expression
+	RValue Expression
+}
+
+func (ae *AssignmentExpression) TokenLiteral() string {
+	return ae.Token.Literal
+}
+
+func (ae *AssignmentExpression) Type() NodeType {
+	return ASSIGNMENT_EXPRESSION
+}
+
+func (ae *AssignmentExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(ae.LValue.String())
+	out.WriteString("=")
+	out.WriteString(ae.RValue.String())
+	out.WriteString(")")
+
+	return out.String()
+}
+
+type SubscriptExpression struct {
+	Token     token.Token
+	Base      Expression
+	Subscript Expression
+}
+
+func (ie *SubscriptExpression) TokenLiteral() string {
+	return ie.Token.Literal
+}
+
+func (ie *SubscriptExpression) Type() NodeType {
+	return SUBSCRIPT_EXPRESSION
+}
+
+func (ie *SubscriptExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(ie.Base.String())
+	out.WriteString("[")
+	out.WriteString(ie.Subscript.String())
+	out.WriteString("])")
+
+	return out.String()
+}
+
 type Identifier struct {
 	Token token.Token
 	Value string
@@ -395,21 +453,52 @@ func (sl *StringLiteral) String() string {
 	return sl.Token.Literal
 }
 
+type ArrayLiteral struct {
+	Token    token.Token
+	Elements []Expression
+}
+
+func (al *ArrayLiteral) TokenLiteral() string {
+	return al.Token.Literal
+}
+
+func (al *ArrayLiteral) Type() NodeType {
+	return ARRAY_LITERAL
+}
+
+func (al *ArrayLiteral) String() string {
+	var out bytes.Buffer
+
+	elems := []string{}
+	for _, elem := range al.Elements {
+		elems = append(elems, elem.String())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(elems, ","))
+	out.WriteString("]")
+
+	return out.String()
+}
+
 var nodes = map[NodeType]string{
-	PROGRAM:              "PROGRAM",
-	LET_DECLARATION:      "LET_DECLARATION",
-	RETURN_STATEMENT:     "RETURN_STATEMENT",
-	EXPRESSION_STATEMENT: "EXPRESSION_STATEMENT",
-	BLOCK_STATEMENT:      "BLOCK_STATEMENT",
-	PREFIX_EXPRESSION:    "PREFIX_EXPRESSION",
-	INFIX_EXPRESSION:     "INFIX_EXPRESSION",
-	IF_EXPRESSION:        "IF_EXPRESSION",
-	FUNCTION_LITERAL:     "FUNCTION_LITERAL",
-	CALL_EXPRESSION:      "CALL_EXPRESSION",
-	IDENTIFIER:           "IDENTIFIER",
-	NUMBER_LITERAL:       "NUMBER_LITERAL",
-	BOOLEAN_LITERAL:      "BOOLEAN_LITERAL",
-	STRING_LITERAL:       "STRING_LITERAL",
+	PROGRAM:               "PROGRAM",
+	LET_DECLARATION:       "LET_DECLARATION",
+	RETURN_STATEMENT:      "RETURN_STATEMENT",
+	EXPRESSION_STATEMENT:  "EXPRESSION_STATEMENT",
+	BLOCK_STATEMENT:       "BLOCK_STATEMENT",
+	PREFIX_EXPRESSION:     "PREFIX_EXPRESSION",
+	INFIX_EXPRESSION:      "INFIX_EXPRESSION",
+	IF_EXPRESSION:         "IF_EXPRESSION",
+	FUNCTION_LITERAL:      "FUNCTION_LITERAL",
+	CALL_EXPRESSION:       "CALL_EXPRESSION",
+	ASSIGNMENT_EXPRESSION: "ASSIGNMENT_EXPRESSION",
+	SUBSCRIPT_EXPRESSION:  "SUBSCRIPT_EXPRESSION",
+	IDENTIFIER:            "IDENTIFIER",
+	NUMBER_LITERAL:        "NUMBER_LITERAL",
+	BOOLEAN_LITERAL:       "BOOLEAN_LITERAL",
+	STRING_LITERAL:        "STRING_LITERAL",
+	ARRAY_LITERAL:         "ARRAY_LITERAL",
 }
 
 func (nt NodeType) String() string {

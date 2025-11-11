@@ -18,20 +18,23 @@ type NodeTest interface {
 	node()
 }
 
-func (p ProgramTest) node()              {}
-func (ls LetDeclarationTest) node()      {}
-func (rs ReturnStatementTest) node()     {}
-func (es ExpressionStatementTest) node() {}
-func (bs BlockStatementTest) node()      {}
-func (pe PrefixExpressionTest) node()    {}
-func (ie InfixExpressionTest) node()     {}
-func (ie IfExpressionTest) node()        {}
-func (fl FunctionLiteralTest) node()     {}
-func (ce CallExpressionTest) node()      {}
-func (i IdentifierTest) node()           {}
-func (nl NumberLiteralTest) node()       {}
-func (bl BooleanLiteralTest) node()      {}
-func (sl StringLiteralTest) node()       {}
+func (p ProgramTest) node()               {}
+func (ls LetDeclarationTest) node()       {}
+func (rs ReturnStatementTest) node()      {}
+func (es ExpressionStatementTest) node()  {}
+func (bs BlockStatementTest) node()       {}
+func (pe PrefixExpressionTest) node()     {}
+func (ie InfixExpressionTest) node()      {}
+func (ie IfExpressionTest) node()         {}
+func (fl FunctionLiteralTest) node()      {}
+func (ce CallExpressionTest) node()       {}
+func (ae AssignmentExpressionTest) node() {}
+func (se SubscriptExpressionTest) node()  {}
+func (i IdentifierTest) node()            {}
+func (nl NumberLiteralTest) node()        {}
+func (bl BooleanLiteralTest) node()       {}
+func (sl StringLiteralTest) node()        {}
+func (al ArrayLiteralTest) node()         {}
 
 type ProgramTest struct {
 	Statements []StatementTest
@@ -72,15 +75,18 @@ type ExpressionTest interface {
 	expressionNode()
 }
 
-func (pe PrefixExpressionTest) expressionNode() {}
-func (ie InfixExpressionTest) expressionNode()  {}
-func (ie IfExpressionTest) expressionNode()     {}
-func (fl FunctionLiteralTest) expressionNode()  {}
-func (ce CallExpressionTest) expressionNode()   {}
-func (i IdentifierTest) expressionNode()        {}
-func (nl NumberLiteralTest) expressionNode()    {}
-func (nl BooleanLiteralTest) expressionNode()   {}
-func (sl StringLiteralTest) expressionNode()    {}
+func (pe PrefixExpressionTest) expressionNode()     {}
+func (ie InfixExpressionTest) expressionNode()      {}
+func (ie IfExpressionTest) expressionNode()         {}
+func (fl FunctionLiteralTest) expressionNode()      {}
+func (ce CallExpressionTest) expressionNode()       {}
+func (ae AssignmentExpressionTest) expressionNode() {}
+func (se SubscriptExpressionTest) expressionNode()  {}
+func (i IdentifierTest) expressionNode()            {}
+func (nl NumberLiteralTest) expressionNode()        {}
+func (nl BooleanLiteralTest) expressionNode()       {}
+func (sl StringLiteralTest) expressionNode()        {}
+func (al ArrayLiteralTest) expressionNode()         {}
 
 type PrefixExpressionTest struct {
 	Operator string
@@ -109,12 +115,26 @@ type CallExpressionTest struct {
 	Arguments []ExpressionTest
 }
 
+type AssignmentExpressionTest struct {
+	LValue ExpressionTest
+	RValue ExpressionTest
+}
+
+type SubscriptExpressionTest struct {
+	Base      ExpressionTest
+	Subscript ExpressionTest
+}
+
 type (
 	IdentifierTest     string
 	NumberLiteralTest  float64
 	BooleanLiteralTest bool
 	StringLiteralTest  string
 )
+
+type ArrayLiteralTest struct {
+	Elements []ExpressionTest
+}
 
 func TestLetStatement(t *testing.T) {
 	tests := []ParserTest{
@@ -126,15 +146,15 @@ func TestLetStatement(t *testing.T) {
 			program: ProgramTest{
 				[]StatementTest{
 					LetDeclarationTest{
-						"x", NumberLiteralTest(5),
+						IdentifierTest("x"), NumberLiteralTest(5),
 						"let x=5;",
 					},
 					LetDeclarationTest{
-						"y", NumberLiteralTest(10),
+						IdentifierTest("y"), NumberLiteralTest(10),
 						"let y=10;",
 					},
 					LetDeclarationTest{
-						"foobar", NumberLiteralTest(838383),
+						IdentifierTest("foobar"), NumberLiteralTest(838383),
 						"let foobar=838383;",
 					},
 				},
@@ -749,6 +769,39 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
+				{
+					input: `a * [1, 2, 3, 4][b * c] * d`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{
+									InfixExpressionTest{
+										IdentifierTest("a"),
+										"*",
+										SubscriptExpressionTest{
+											ArrayLiteralTest{
+												[]ExpressionTest{
+													NumberLiteralTest(1),
+													NumberLiteralTest(2),
+													NumberLiteralTest(3),
+													NumberLiteralTest(4),
+												},
+											},
+											InfixExpressionTest{
+												IdentifierTest("b"),
+												"*",
+												IdentifierTest("c"),
+											},
+										},
+									},
+									"*",
+									IdentifierTest("d"),
+								},
+								"((a*([1,2,3,4][(b*c)]))*d);",
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -993,6 +1046,46 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
+				{
+					input: `add(a * b[2], b[1], 2 * [1, 2][1])`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								CallExpressionTest{
+									IdentifierTest("add"),
+									[]ExpressionTest{
+										InfixExpressionTest{
+											IdentifierTest("a"),
+											"*",
+											SubscriptExpressionTest{
+												IdentifierTest("b"),
+												NumberLiteralTest(2),
+											},
+										},
+										SubscriptExpressionTest{
+											IdentifierTest("b"),
+											NumberLiteralTest(1),
+										},
+										InfixExpressionTest{
+											NumberLiteralTest(2),
+											"*",
+											SubscriptExpressionTest{
+												ArrayLiteralTest{
+													[]ExpressionTest{
+														NumberLiteralTest(1),
+														NumberLiteralTest(2),
+													},
+												},
+												NumberLiteralTest(1),
+											},
+										},
+									},
+								},
+								"add((a*(b[2])),(b[1]),(2*([1,2][1])));",
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -1005,6 +1098,151 @@ func TestExpressionStatement(t *testing.T) {
 							ExpressionStatementTest{
 								StringLiteralTest("hello world"),
 								"\"hello world\";",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestArrayLiteral",
+			tests: []ParserTest{
+				{
+					input: `[1, 2 * 2, 3 + 3]`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								ArrayLiteralTest{
+									[]ExpressionTest{
+										NumberLiteralTest(1),
+										InfixExpressionTest{
+											NumberLiteralTest(2),
+											"*",
+											NumberLiteralTest(2),
+										},
+										InfixExpressionTest{
+											NumberLiteralTest(3),
+											"+",
+											NumberLiteralTest(3),
+										},
+									},
+								},
+								"[1,(2*2),(3+3)];",
+							},
+						},
+					},
+				},
+				{
+					input: `[]`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								ArrayLiteralTest{
+									[]ExpressionTest{},
+								},
+								"[];",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestSubscriptExpression",
+			tests: []ParserTest{
+				{
+					input: `array[1 + 1]`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								SubscriptExpressionTest{
+									IdentifierTest("array"),
+									InfixExpressionTest{
+										NumberLiteralTest(1),
+										"+",
+										NumberLiteralTest(1),
+									},
+								},
+								"(array[(1+1)]);",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestAssignmentExpression",
+			tests: []ParserTest{
+				{
+					input: `
+					x = 5;
+					y = 10;
+					foobar = 838383;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								AssignmentExpressionTest{
+									IdentifierTest("x"),
+									NumberLiteralTest(5),
+								},
+								"(x=5);",
+							},
+							ExpressionStatementTest{
+								AssignmentExpressionTest{
+									IdentifierTest("y"),
+									NumberLiteralTest(10),
+								},
+								"(y=10);",
+							},
+							ExpressionStatementTest{
+								AssignmentExpressionTest{
+									IdentifierTest("foobar"),
+									NumberLiteralTest(838383),
+								},
+								"(foobar=838383);",
+							},
+						},
+					},
+				},
+				{
+					input: `x = y = foobar = 838383;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								AssignmentExpressionTest{
+									IdentifierTest("x"),
+									AssignmentExpressionTest{
+										IdentifierTest("y"),
+										AssignmentExpressionTest{
+											IdentifierTest("foobar"),
+											NumberLiteralTest(838383),
+										},
+									},
+								},
+								"(x=(y=(foobar=838383)));",
+							},
+						},
+					},
+				},
+				{
+					input: `2 + 2 = 5;`,
+					errors: []string{
+						"unexpected lvalue type <INFIX_EXPRESSION>",
+					},
+				},
+				{
+					input: `array[0] = 0`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								AssignmentExpressionTest{
+									SubscriptExpressionTest{
+										IdentifierTest("array"),
+										NumberLiteralTest(0),
+									},
+									NumberLiteralTest(0),
+								},
+								"((array[0])=0);",
 							},
 						},
 					},
@@ -1031,7 +1269,7 @@ func testParser(t *testing.T, i int, test ParserTest) {
 		for j, msg := range p.Errors() {
 			t.Errorf("--------- p.Errors()[%d]: %s", j, msg)
 		}
-		t.FailNow()
+		t.Fatalf("test[%d] - %s", i, test.input)
 	}
 
 	for j, msg := range test.errors {
@@ -1210,6 +1448,14 @@ func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.
 		if !testCallExpression(t, i, j, expected, actual) {
 			return false
 		}
+	case AssignmentExpressionTest:
+		if !testAssignmentExpression(t, i, j, expected, actual) {
+			return false
+		}
+	case SubscriptExpressionTest:
+		if !testSubscriptExpression(t, i, j, expected, actual) {
+			return false
+		}
 	case IdentifierTest:
 		if !testIdentifier(t, i, j, expected, actual) {
 			return false
@@ -1224,6 +1470,10 @@ func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.
 		}
 	case StringLiteralTest:
 		if !testStringLiteral(t, i, j, expected, actual) {
+			return false
+		}
+	case ArrayLiteralTest:
+		if !testArrayLiteral(t, i, j, expected, actual) {
 			return false
 		}
 	default:
@@ -1361,6 +1611,52 @@ func testCallExpression(t *testing.T, i, j int, expected CallExpressionTest, act
 	return true
 }
 
+func testAssignmentExpression(t *testing.T, i, j int, expected AssignmentExpressionTest, actual ast.Expression) bool {
+	if "=" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.AssignmentExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "=", actual.TokenLiteral())
+		return false
+	}
+
+	expr, ok := actual.(*ast.AssignmentExpression)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.AssignmentExpression) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.AssignmentExpression{}, actual)
+		return false
+	}
+
+	if !testExpression(t, i, j, expected.LValue, expr.LValue) {
+		return false
+	}
+
+	if !testExpression(t, i, j, expected.RValue, expr.RValue) {
+		return false
+	}
+
+	return true
+}
+
+func testSubscriptExpression(t *testing.T, i, j int, expected SubscriptExpressionTest, actual ast.Expression) bool {
+	if "[" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.SubscriptExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "[", actual.TokenLiteral())
+		return false
+	}
+
+	expr, ok := actual.(*ast.SubscriptExpression)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.SubscriptExpression) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.SubscriptExpression{}, actual)
+		return false
+	}
+
+	if !testExpression(t, i, j, expected.Base, expr.Base) {
+		return false
+	}
+
+	if !testExpression(t, i, j, expected.Subscript, expr.Subscript) {
+		return false
+	}
+
+	return true
+}
+
 func testIdentifier(t *testing.T, i, j int, expected IdentifierTest, actual ast.Expression) bool {
 	if string(expected) != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.Identifier.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, string(expected), actual.TokenLiteral())
@@ -1436,6 +1732,32 @@ func testStringLiteral(t *testing.T, i, j int, expected StringLiteralTest, actua
 	if string(expected) != expr.Value {
 		t.Errorf("test[%d][%d] - *ast.StringLiteral.Value ==> expected: <%s> but was: <%s>", i, j, string(expected), expr.Value)
 		return false
+	}
+
+	return true
+}
+
+func testArrayLiteral(t *testing.T, i, j int, expected ArrayLiteralTest, actual ast.Expression) bool {
+	if "[" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.ArrayLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "[", actual.TokenLiteral())
+		return false
+	}
+
+	array, ok := actual.(*ast.ArrayLiteral)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.ArrayLiteral) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.ArrayLiteral{}, actual)
+		return false
+	}
+
+	if len(expected.Elements) != len(array.Elements) {
+		t.Errorf("test[%d][%d] - len(array.Elements) ==> expected: <%d> but was: <%d>", i, j, len(expected.Elements), len(array.Elements))
+		return false
+	}
+
+	for k, element := range expected.Elements {
+		if !testExpression(t, i, j, element, array.Elements[k]) {
+			return false
+		}
 	}
 
 	return true

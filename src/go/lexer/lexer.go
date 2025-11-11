@@ -100,6 +100,12 @@ func (l *Lexer) NextToken() token.Token {
 		case '}':
 			l.next()
 			return l.emit(token.RBRACE)
+		case '[':
+			l.next()
+			return l.emit(token.LBRACK)
+		case ']':
+			l.next()
+			return l.emit(token.RBRACK)
 		case '"':
 			return l.string()
 		default:

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
@@ -31,6 +32,7 @@ const (
 	FACTOR
 	UNARY
 	CALL
+	SUBSCRIPT
 )
 
 type (
@@ -59,7 +61,7 @@ func NewParser(input string, debug bool) *Parser {
 		token.IDENT:   {p.parseIdentifier, nil, NONE},
 		token.NUMBER:  {p.parseNumberLiteral, nil, NONE},
 		token.STRING:  {p.parseStringLiteral, nil, NONE},
-		token.ASSIGN:  {nil, nil, NONE},
+		token.ASSIGN:  {nil, p.parseAssignmentExpression, ASSIGNMENT},
 		token.PLUS:    {nil, p.parseInfixExpression, TERM},
 		token.MINUS:   {p.parsePrefixExpression, p.parseInfixExpression, TERM},
 		token.BANG:    {p.parsePrefixExpression, nil, NONE},
@@ -75,6 +77,8 @@ func NewParser(input string, debug bool) *Parser {
 		token.RPAREN:  {nil, nil, NONE},
 		token.LBRACE:  {nil, nil, NONE},
 		token.RBRACE:  {nil, nil, NONE},
+		token.LBRACK:  {p.parseArrayLiteral, p.parseSubscriptExpression, SUBSCRIPT},
+		token.RBRACK:  {nil, nil, NONE},
 		token.FN:      {p.parseFunctionLiteral, nil, NONE},
 		token.LET:     {nil, nil, NONE},
 		token.TRUE:    {p.parseBooleanLiteral, nil, NONE},
@@ -118,6 +122,9 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.SEMI:
+		p.skip(token.SEMI)
+		return nil
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -325,13 +332,7 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 		return nil
 	}
 
-	if p.peek1().Type == token.RPAREN {
-		expr.Parameters = []*ast.Identifier{}
-	} else {
-		p.next()
-
-		expr.Parameters = p.parseParameters()
-	}
+	expr.Parameters = p.parseIdentifierList(token.RPAREN)
 
 	if !p.expect(token.RPAREN) {
 		return nil
@@ -355,18 +356,59 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 		Token:  p.tok,
 		Callee: left,
 	}
-
-	if p.peek1().Type == token.RPAREN {
-		expr.Arguments = []ast.Expression{}
-	} else {
-		p.next()
-
-		expr.Arguments = p.parseArguments()
-	}
+	expr.Arguments = p.parseExpressionList(token.RPAREN)
 
 	if !p.expect(token.RPAREN) {
 		return nil
 	}
+
+	return expr
+}
+
+func (p *Parser) parseSubscriptExpression(left ast.Expression) ast.Expression {
+	if p.debug {
+		defer un(trace("ParseSubscriptExpression"))
+	}
+
+	expr := &ast.SubscriptExpression{
+		Token: p.tok,
+		Base:  left,
+	}
+
+	p.next()
+
+	expr.Subscript = p.parseExpression(ASSIGNMENT - 1) // right associativity
+
+	if !p.expect(token.RBRACK) {
+		return nil
+	}
+
+	return expr
+}
+
+var lvalues = []ast.NodeType{
+	ast.IDENTIFIER,
+	ast.SUBSCRIPT_EXPRESSION,
+}
+
+func (p *Parser) parseAssignmentExpression(left ast.Expression) ast.Expression {
+	if p.debug {
+		defer un(trace("ParseAssignmentExpression"))
+	}
+
+	if !slices.Contains(lvalues, left.Type()) {
+		p.error("unexpected lvalue type <%s>", left.Type())
+		return nil
+	}
+
+	expr := &ast.AssignmentExpression{
+		Token:  p.tok,
+		LValue: left,
+	}
+
+	p.next()
+
+	expr.RValue = p.parseExpression(ASSIGNMENT - 1) // right associativity
 
 	return expr
 }
@@ -411,8 +453,28 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 	return &ast.BooleanLiteral{Token: p.tok, Value: p.tok.Type == token.TRUE}
 }
 
-func (p *Parser) parseParameters() []*ast.Identifier {
+func (p *Parser) parseArrayLiteral() ast.Expression {
+	if p.debug {
+		defer un(trace("ParseArrayLiteral"))
+	}
+
+	expr := &ast.ArrayLiteral{Token: p.tok}
+	expr.Elements = p.parseExpressionList(token.RBRACK)
+
+	if !p.expect(token.RBRACK) {
+		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseIdentifierList(terminator token.TokenType) []*ast.Identifier {
 	idents := []*ast.Identifier{}
+	if p.peek1().Type == terminator {
+		return idents
+	}
+
+	p.next()
 
 	ident := p.parseIdentifier().(*ast.Identifier)
 	if ident != nil {
@@ -435,15 +497,20 @@ func (p *Parser) parseParameters() []*ast.Identifier {
 	return idents
 }
 
-func (p *Parser) parseArguments() []ast.Expression {
+func (p *Parser) parseExpressionList(terminator token.TokenType) []ast.Expression {
 	args := []ast.Expression{}
+	if p.peek1().Type == terminator {
+		return args
+	}
+
+	p.next()
 
 	arg := p.parseExpression(ASSIGNMENT - 1) // right associativity
 	if arg != nil {
 		args = append(args, arg)
 	}
 
-	for p.peek1().Type != token.RPAREN {
+	for p.peek1().Type != terminator {
 		if !p.expect(token.COMMA) {
 			return nil
 		}
@@ -457,6 +524,12 @@ func (p *Parser) parseArguments() []ast.Expression {
 	}
 
 	return args
+}
+
+func (p *Parser) skip(toks ...token.TokenType) {
+	for slices.Contains(toks, p.peek1().Type) {
+		p.next()
+	}
 }
 
 func (p *Parser) expect(ttype token.TokenType) bool {

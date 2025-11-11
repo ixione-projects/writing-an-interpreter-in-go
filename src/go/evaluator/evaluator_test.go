@@ -21,6 +21,7 @@ func (f FunctionTest) object() {}
 func (n NumberTest) object()   {}
 func (b BooleanTest) object()  {}
 func (s StringTest) object()   {}
+func (a ArrayTest) object()    {}
 func (n NullTest) object()     {}
 
 type FunctionTest struct {
@@ -32,6 +33,10 @@ type (
 	BooleanTest bool
 	StringTest  string
 )
+
+type ArrayTest struct {
+	Elements []ObjectTest
+}
 
 type NullTest struct{}
 
@@ -221,6 +226,54 @@ var suites = []struct {
 					addTwo(2);`,
 				object: NumberTest(4),
 			},
+			{
+				input:  `len("")`,
+				object: NumberTest(0),
+			},
+			{
+				input:  `len("four")`,
+				object: NumberTest(4),
+			},
+			{
+				input:  `len("hello world")`,
+				object: NumberTest(11),
+			},
+			{
+				input:  `[1, 2, 3][0]`,
+				object: NumberTest(1),
+			},
+			{
+				input:  `[1, 2, 3][1]`,
+				object: NumberTest(2),
+			},
+			{
+				input:  `[1, 2, 3][2]`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `let i = 0; [1][i];`,
+				object: NumberTest(1),
+			},
+			{
+				input:  `[1, 2, 3][1 + 1];`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `let array = [1, 2, 3]; array[2];`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `let array = [1, 2, 3]; array[0] + array[1] + array[2];`,
+				object: NumberTest(6),
+			},
+			{
+				input:  `let array = [1, 2, 3]; let i = array[0]; array[i];`,
+				object: NumberTest(2),
+			},
+			{
+				input:  `[1, 2, 3][3] = 4`,
+				object: NumberTest(4),
+			},
 		},
 	},
 	{
@@ -339,6 +392,14 @@ var suites = []struct {
 				input:  `if (1 > 2) { 10 }`,
 				object: NullTest{},
 			},
+			{
+				input:  `[1, 2, 3][3]`,
+				object: NullTest{},
+			},
+			{
+				input:  `[1, 2, 3][-1]`,
+				object: NullTest{},
+			},
 		},
 	},
 	{
@@ -387,6 +448,18 @@ var suites = []struct {
 				input: `"Hello" - "World"`,
 				error: ErrorTest{"unknown operator: STRING - STRING"},
 			},
+			{
+				input: `len(1)`,
+				error: ErrorTest{"argument(s) to `len` not supported: (INTEGER)"},
+			},
+			{
+				input: `len("one", "two")`,
+				error: ErrorTest{"argument(s) to `len` not supported: (STRING, STRING)"},
+			},
+			{
+				input: `[1, 2, 3][-1] = 0`,
+				error: ErrorTest{"unexpected subscript value: -1"},
+			},
 		},
 	},
 	{
@@ -411,6 +484,33 @@ var suites = []struct {
 			},
 		},
 	},
+	{
+		name: "TestArray",
+		tests: []EvaluatorTest{
+			{
+				input: `let array = [1]; array[3] = 4; array`,
+				object: ArrayTest{
+					[]ObjectTest{
+						NumberTest(1),
+						NullTest{},
+						NullTest{},
+						NumberTest(4),
+					},
+				},
+			},
+			{
+				input: `let array = []; array[3] = 4; array`,
+				object: ArrayTest{
+					[]ObjectTest{
+						NullTest{},
+						NullTest{},
+						NullTest{},
+						NumberTest(4),
+					},
+				},
+			},
+		},
+	},
 }
 
 func TestEvaluateNumber(t *testing.T) {
@@ -432,7 +532,7 @@ func testEvaluator(tb testing.TB, i int, test EvaluatorTest) {
 		for j, msg := range p.Errors() {
 			tb.Errorf("--------- p.Errors()[%d]: %s", j, msg)
 		}
-		tb.FailNow()
+		tb.Fatalf("test[%d] - %s", i, test.input)
 	}
 
 	object, interruption := Evaluate(program, object.NewEnvironment(nil))
@@ -466,8 +566,12 @@ func testObject(tb testing.TB, i int, expected ObjectTest, actual object.Object)
 		if !testString(tb, i, expected, actual) {
 			return false
 		}
+	case ArrayTest:
+		if !testArray(tb, i, expected, actual) {
+			return false
+		}
 	case NullTest:
-		if !testNull(tb, i, expected, actual) {
+		if !testNull(tb, i, actual) {
 			return false
 		}
 	default:
@@ -536,7 +640,28 @@ func testString(tb testing.TB, i int, expected StringTest, actual object.Object)
 	return true
 }
 
-func testNull(tb testing.TB, i int, expected NullTest, actual object.Object) bool {
+func testArray(tb testing.TB, i int, expected ArrayTest, actual object.Object) bool {
+	array, ok := actual.(*object.Array)
+	if !ok {
+		tb.Errorf("test[%d] - actual.(*object.Array) ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Null{}, actual)
+		return false
+	}
+
+	if len(expected.Elements) != len(array.Elements) {
+		tb.Errorf("test[%d] - len(array.Elements) ==> expected: <%d> but was: <%d>", i, len(expected.Elements), len(array.Elements))
+		return false
+	}
+
+	for j, element := range expected.Elements {
+		if !testObject(tb, i, element, array.Elements[j]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testNull(tb testing.TB, i int, actual object.Object) bool {
 	_, ok := actual.(*object.Null)
 	if !ok {
 		tb.Errorf("test[%d] - actual.(*object.Null) ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Null{}, actual)

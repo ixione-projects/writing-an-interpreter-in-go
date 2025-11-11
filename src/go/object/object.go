@@ -1,6 +1,7 @@
 package object
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -11,9 +12,11 @@ type ObjectType int
 
 const (
 	FUNCTION ObjectType = iota
+	BUILTIN
 	NUMBER
 	BOOLEAN
 	STRING
+	ARRAY
 	NULL
 )
 
@@ -36,7 +39,21 @@ func (f *Function) Inspect() string {
 	for _, param := range f.Declaration.Parameters {
 		params = append(params, param.Value)
 	}
-	return "<fn (" + strings.Join(params, ",") + ")>"
+	return "<fn (" + strings.Join(params, ", ") + ")>"
+}
+
+type BuiltinFunction func(args ...Object) (Object, Interruption)
+
+type Builtin struct {
+	Fn BuiltinFunction
+}
+
+func (b *Builtin) Type() ObjectType {
+	return BUILTIN
+}
+
+func (b *Builtin) Inspect() string {
+	return "<fn builtin>"
 }
 
 type (
@@ -67,6 +84,29 @@ func (b Boolean) Inspect() string {
 
 func (s String) Inspect() string {
 	return "\"" + string(s) + "\""
+}
+
+type Array struct {
+	Elements []Object
+}
+
+func (a *Array) Type() ObjectType {
+	return ARRAY
+}
+
+func (a *Array) Inspect() string {
+	var out bytes.Buffer
+
+	elems := []string{}
+	for _, elem := range a.Elements {
+		elems = append(elems, elem.Inspect())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(elems, ", "))
+	out.WriteString("]")
+
+	return out.String()
 }
 
 type Null struct{}
@@ -107,10 +147,13 @@ func (e *Error) Type() InterruptionType {
 }
 
 var objects = map[ObjectType]string{
-	NUMBER:  "INTEGER",
-	BOOLEAN: "BOOLEAN",
-	STRING:  "STRING",
-	NULL:    "NULL",
+	FUNCTION: "FUNCTION",
+	BUILTIN:  "BUILTIN",
+	NUMBER:   "INTEGER",
+	BOOLEAN:  "BOOLEAN",
+	STRING:   "STRING",
+	ARRAY:    "ARRAY",
+	NULL:     "NULL",
 }
 
 func (ot ObjectType) String() string {

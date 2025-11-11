@@ -153,6 +153,18 @@ func TestNextToken(t *testing.T) {
 				{Type: token.EOF, Literal: ""},
 			},
 		},
+		{
+			input: `[1, 2];`,
+			tokens: []token.Token{
+				{Type: token.LBRACK, Literal: "["},
+				{Type: token.NUMBER, Literal: "1"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.NUMBER, Literal: "2"},
+				{Type: token.RBRACK, Literal: "]"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
+			},
+		},
 	}
 
 	for i, test := range tests {

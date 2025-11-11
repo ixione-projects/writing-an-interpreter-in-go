@@ -37,6 +37,8 @@ const (
 	RPAREN
 	LBRACE
 	RBRACE
+	LBRACK
+	RBRACK
 
 	// Keywords
 	FN
@@ -70,6 +72,8 @@ var tokens = [...]string{
 	RPAREN:  "RPAREN",
 	LBRACE:  "LBRACE",
 	RBRACE:  "RBRACE",
+	LBRACK:  "LBRACK",
+	RBRACK:  "RBRACK",
 	FN:      "FN",
 	LET:     "LET",
 	TRUE:    "TRUE",
