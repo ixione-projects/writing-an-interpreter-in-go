@@ -27,6 +27,8 @@ const (
 	BOOLEAN_LITERAL
 	STRING_LITERAL
 	ARRAY_LITERAL
+	HASH_LITERAL
+	NULL_LITERAL
 )
 
 type Node interface {
@@ -188,6 +190,8 @@ func (nl *NumberLiteral) expressionNode()        {}
 func (bl *BooleanLiteral) expressionNode()       {}
 func (sl *StringLiteral) expressionNode()        {}
 func (al *ArrayLiteral) expressionNode()         {}
+func (hl *HashLiteral) expressionNode()          {}
+func (nl *NullLiteral) expressionNode()          {}
 
 type PrefixExpression struct {
 	Token    token.Token
@@ -481,6 +485,51 @@ func (al *ArrayLiteral) String() string {
 	return out.String()
 }
 
+type HashLiteral struct {
+	Token token.Token
+	Keys  []Expression
+	Pairs map[Expression]Expression
+}
+
+func (hl *HashLiteral) TokenLiteral() string {
+	return hl.Token.Literal
+}
+
+func (hl *HashLiteral) Type() NodeType {
+	return HASH_LITERAL
+}
+
+func (hl *HashLiteral) String() string {
+	var out bytes.Buffer
+
+	pairs := []string{}
+	for _, key := range hl.Keys {
+		pairs = append(pairs, key.String()+":"+hl.Pairs[key].String())
+	}
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ","))
+	out.WriteString("}")
+
+	return out.String()
+}
+
+type NullLiteral struct {
+	Token token.Token
+}
+
+func (nl *NullLiteral) TokenLiteral() string {
+	return nl.Token.Literal
+}
+
+func (nl *NullLiteral) Type() NodeType {
+	return NULL_LITERAL
+}
+
+func (nl *NullLiteral) String() string {
+	return nl.Token.Literal
+}
+
 var nodes = map[NodeType]string{
 	PROGRAM:               "PROGRAM",
 	LET_DECLARATION:       "LET_DECLARATION",
@@ -499,6 +548,8 @@ var nodes = map[NodeType]string{
 	BOOLEAN_LITERAL:       "BOOLEAN_LITERAL",
 	STRING_LITERAL:        "STRING_LITERAL",
 	ARRAY_LITERAL:         "ARRAY_LITERAL",
+	HASH_LITERAL:          "HASH_LITERAL",
+	NULL_LITERAL:          "NULL_LITERAL",
 }
 
 func (nt NodeType) String() string {

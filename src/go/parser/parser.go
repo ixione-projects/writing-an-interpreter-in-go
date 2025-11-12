@@ -56,7 +56,7 @@ func NewParser(input string, debug bool) *Parser {
 	p.tok = p.peek0()
 
 	p.rules = map[token.TokenType]parseRule{
-		token.ILLEGAL: {nil, nil, NONE},
+		token.ILLEGAL: {p.reportIllegalToken, nil, NONE},
 		token.EOF:     {nil, nil, NONE},
 		token.IDENT:   {p.parseIdentifier, nil, NONE},
 		token.NUMBER:  {p.parseNumberLiteral, nil, NONE},
@@ -73,9 +73,10 @@ func NewParser(input string, debug bool) *Parser {
 		token.NOT_EQ:  {nil, p.parseInfixExpression, EQUALITY},
 		token.COMMA:   {nil, nil, NONE},
 		token.SEMI:    {nil, nil, NONE},
+		token.COLON:   {nil, nil, NONE},
 		token.LPAREN:  {p.parseGroupingExpression, p.parseCallExpression, CALL},
 		token.RPAREN:  {nil, nil, NONE},
-		token.LBRACE:  {nil, nil, NONE},
+		token.LBRACE:  {p.parseHashLiteral, nil, NONE},
 		token.RBRACE:  {nil, nil, NONE},
 		token.LBRACK:  {p.parseArrayLiteral, p.parseSubscriptExpression, SUBSCRIPT},
 		token.RBRACK:  {nil, nil, NONE},
@@ -86,6 +87,8 @@ func NewParser(input string, debug bool) *Parser {
 		token.IF:      {p.parseIfExpression, nil, NONE},
 		token.ELSE:    {nil, nil, NONE},
 		token.RETURN:  {nil, nil, NONE},
+		token.NULL:    {p.parseNullLiteral, nil, NONE},
+		token.WHILE:   {nil, nil, NONE},
 	}
 
 	return p
@@ -468,6 +471,71 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 	return expr
 }
 
+func (p *Parser) parseHashLiteral() ast.Expression {
+	if p.debug {
+		defer un(trace("ParseHashLiteral"))
+	}
+
+	expr := &ast.HashLiteral{Token: p.tok}
+	expr.Keys = []ast.Expression{}
+	expr.Pairs = map[ast.Expression]ast.Expression{}
+
+	if p.peek1().Type != token.RBRACE {
+		p.next()
+
+		key := p.parseExpression(ASSIGNMENT - 1) // right associativity
+		if !p.expect(token.COLON) {
+			return nil
+		}
+
+		p.next()
+
+		value := p.parseExpression(ASSIGNMENT - 1) // right associativity
+
+		expr.Keys = append(expr.Keys, key)
+		expr.Pairs[key] = value
+
+		for p.peek1().Type != token.RBRACE {
+			if !p.expect(token.COMMA) {
+				return nil
+			}
+
+			p.next()
+
+			key := p.parseExpression(ASSIGNMENT - 1) // right associativity
+			if !p.expect(token.COLON) {
+				return nil
+			}
+
+			p.next()
+
+			value := p.parseExpression(ASSIGNMENT - 1) // right associativity
+
+			expr.Keys = append(expr.Keys, key)
+			expr.Pairs[key] = value
+		}
+	}
+
+	if !p.expect(token.RBRACE) {
+		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseNullLiteral() ast.Expression {
+	if p.debug {
+		defer un(trace("ParseNullLiteral"))
+	}
+
+	return &ast.NullLiteral{Token: p.tok}
+}
+
+func (p *Parser) reportIllegalToken() ast.Expression {
+	p.error("illegal token: <%s>", p.tok.Literal)
+	return nil
+}
+
 func (p *Parser) parseIdentifierList(terminator token.TokenType) []*ast.Identifier {
 	idents := []*ast.Identifier{}
 	if p.peek1().Type == terminator {
@@ -498,16 +566,16 @@ func (p *Parser) parseIdentifierList(terminator token.TokenType) []*ast.Identifi
 }
 
 func (p *Parser) parseExpressionList(terminator token.TokenType) []ast.Expression {
-	args := []ast.Expression{}
+	exprs := []ast.Expression{}
 	if p.peek1().Type == terminator {
-		return args
+		return exprs
 	}
 
 	p.next()
 
-	arg := p.parseExpression(ASSIGNMENT - 1) // right associativity
-	if arg != nil {
-		args = append(args, arg)
+	expr := p.parseExpression(ASSIGNMENT - 1) // right associativity
+	if expr != nil {
+		exprs = append(exprs, expr)
 	}
 
 	for p.peek1().Type != terminator {
@@ -517,13 +585,13 @@ func (p *Parser) parseExpressionList(terminator token.TokenType) []ast.Expressio
 
 		p.next()
 
-		arg := p.parseExpression(ASSIGNMENT - 1) // right associativity
-		if arg != nil {
-			args = append(args, arg)
+		expr := p.parseExpression(ASSIGNMENT - 1) // right associativity
+		if expr != nil {
+			exprs = append(exprs, expr)
 		}
 	}
 
-	return args
+	return exprs
 }
 
 func (p *Parser) skip(toks ...token.TokenType) {

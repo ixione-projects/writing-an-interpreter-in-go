@@ -33,6 +33,7 @@ const (
 	// Delimiters
 	COMMA
 	SEMI
+	COLON
 	LPAREN
 	RPAREN
 	LBRACE
@@ -48,6 +49,8 @@ const (
 	IF
 	ELSE
 	RETURN
+	NULL
+	WHILE
 )
 
 var tokens = [...]string{
@@ -68,6 +71,7 @@ var tokens = [...]string{
 	NOT_EQ:  "NOT_EQ",
 	COMMA:   "COMMA",
 	SEMI:    "SEMI",
+	COLON:   "COLON",
 	LPAREN:  "LPAREN",
 	RPAREN:  "RPAREN",
 	LBRACE:  "LBRACE",
@@ -81,6 +85,8 @@ var tokens = [...]string{
 	IF:      "IF",
 	ELSE:    "ELSE",
 	RETURN:  "RETURN",
+	NULL:    "NULL",
+	WHILE:   "WHILE",
 }
 
 var keywords = map[string]TokenType{
@@ -91,6 +97,8 @@ var keywords = map[string]TokenType{
 	"if":     IF,
 	"else":   ELSE,
 	"return": RETURN,
+	"null":   NULL,
+	"while":  WHILE,
 }
 
 func LookupIdent(ident string) TokenType {

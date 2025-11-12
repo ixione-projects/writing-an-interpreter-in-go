@@ -35,6 +35,7 @@ func (nl NumberLiteralTest) node()        {}
 func (bl BooleanLiteralTest) node()       {}
 func (sl StringLiteralTest) node()        {}
 func (al ArrayLiteralTest) node()         {}
+func (hl HashLiteralTest) node()          {}
 
 type ProgramTest struct {
 	Statements []StatementTest
@@ -87,6 +88,7 @@ func (nl NumberLiteralTest) expressionNode()        {}
 func (nl BooleanLiteralTest) expressionNode()       {}
 func (sl StringLiteralTest) expressionNode()        {}
 func (al ArrayLiteralTest) expressionNode()         {}
+func (hl HashLiteralTest) expressionNode()          {}
 
 type PrefixExpressionTest struct {
 	Operator string
@@ -134,6 +136,11 @@ type (
 
 type ArrayLiteralTest struct {
 	Elements []ExpressionTest
+}
+
+type HashLiteralTest struct {
+	Keys  []ExpressionTest
+	Pairs map[ExpressionTest]ExpressionTest
 }
 
 func TestLetStatement(t *testing.T) {
@@ -1248,19 +1255,6 @@ func TestExpressionStatement(t *testing.T) {
 			name: "TestArrayLiteral",
 			tests: []ParserTest{
 				{
-					input: `[]`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								ArrayLiteralTest{
-									[]ExpressionTest{},
-								},
-								"[];",
-							},
-						},
-					},
-				},
-				{
 					input: `[1, 2 * 2, 3 + 3]`,
 					program: ProgramTest{
 						[]StatementTest{
@@ -1285,11 +1279,19 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
-			},
-		},
-		{
-			name: "TestSubscriptExpression",
-			tests: []ParserTest{
+				{
+					input: `[]`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								ArrayLiteralTest{
+									[]ExpressionTest{},
+								},
+								"[];",
+							},
+						},
+					},
+				},
 				{
 					input: `array[1 + 1]`,
 					program: ProgramTest{
@@ -1304,6 +1306,120 @@ func TestExpressionStatement(t *testing.T) {
 									},
 								},
 								"(array[(1+1)]);",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "TestHashLiteral",
+			tests: []ParserTest{
+				{
+					input: `{"one": 1, "two": 2, "three": 3}`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								HashLiteralTest{
+									[]ExpressionTest{
+										StringLiteralTest("one"),
+										StringLiteralTest("two"),
+										StringLiteralTest("three"),
+									},
+									map[ExpressionTest]ExpressionTest{
+										StringLiteralTest("one"):   NumberLiteralTest(1),
+										StringLiteralTest("two"):   NumberLiteralTest(2),
+										StringLiteralTest("three"): NumberLiteralTest(3),
+									},
+								},
+								"{\"one\":1,\"two\":2,\"three\":3};",
+							},
+						},
+					},
+				},
+				{
+					input: `{};`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								HashLiteralTest{},
+								"{};",
+							},
+						},
+					},
+				},
+				{
+					input: `{true: 1, false: 2}`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								HashLiteralTest{
+									[]ExpressionTest{
+										BooleanLiteralTest(true),
+										BooleanLiteralTest(false),
+									},
+									map[ExpressionTest]ExpressionTest{
+										BooleanLiteralTest(true):  NumberLiteralTest(1),
+										BooleanLiteralTest(false): NumberLiteralTest(2),
+									},
+								},
+								"{true:1,false:2};",
+							},
+						},
+					},
+				},
+				{
+					input: `{1: 1, 2: 2, 3: 3}`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								HashLiteralTest{
+									[]ExpressionTest{
+										NumberLiteralTest(1),
+										NumberLiteralTest(2),
+										NumberLiteralTest(3),
+									},
+									map[ExpressionTest]ExpressionTest{
+										NumberLiteralTest(1): NumberLiteralTest(1),
+										NumberLiteralTest(2): NumberLiteralTest(2),
+										NumberLiteralTest(3): NumberLiteralTest(3),
+									},
+								},
+								"{1:1,2:2,3:3};",
+							},
+						},
+					},
+				},
+				{
+					input: `{"one": 0 + 1, "two": 10 - 8, "three": 15 / 5}`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								HashLiteralTest{
+									[]ExpressionTest{
+										StringLiteralTest("one"),
+										StringLiteralTest("two"),
+										StringLiteralTest("three"),
+									},
+									map[ExpressionTest]ExpressionTest{
+										StringLiteralTest("one"): InfixExpressionTest{
+											NumberLiteralTest(0),
+											"+",
+											NumberLiteralTest(1),
+										},
+										StringLiteralTest("two"): InfixExpressionTest{
+											NumberLiteralTest(10),
+											"-",
+											NumberLiteralTest(8),
+										},
+										StringLiteralTest("three"): InfixExpressionTest{
+											NumberLiteralTest(15),
+											"/",
+											NumberLiteralTest(5),
+										},
+									},
+								},
+								"{\"one\":(0+1),\"two\":(10-8),\"three\":(15/5)};",
 							},
 						},
 					},
@@ -1535,6 +1651,10 @@ func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.
 		}
 	case ArrayLiteralTest:
 		if !testArrayLiteral(t, i, j, expected, actual) {
+			return false
+		}
+	case HashLiteralTest:
+		if !testHashLiteral(t, i, j, expected, actual) {
 			return false
 		}
 	default:
@@ -1817,6 +1937,36 @@ func testArrayLiteral(t *testing.T, i, j int, expected ArrayLiteralTest, actual 
 
 	for k, element := range expected.Elements {
 		if !testExpression(t, i, j, element, array.Elements[k]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testHashLiteral(t *testing.T, i, j int, expected HashLiteralTest, actual ast.Expression) bool {
+	if "{" != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.HashLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "{", actual.TokenLiteral())
+		return false
+	}
+
+	hash, ok := actual.(*ast.HashLiteral)
+	if !ok {
+		t.Errorf("test[%d][%d] - actual.(*ast.HashLiteral) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.ArrayLiteral{}, actual)
+		return false
+	}
+
+	if len(expected.Pairs) != len(hash.Pairs) {
+		t.Errorf("test[%d][%d] - len(hash.Pairs) ==> expected: <%d> but was: <%d>", i, j, len(expected.Pairs), len(hash.Pairs))
+		return false
+	}
+
+	for k, key := range expected.Keys {
+		if !testExpression(t, i, j, key, hash.Keys[k]) {
+			return false
+		}
+
+		if !testExpression(t, i, j, expected.Pairs[key], hash.Pairs[hash.Keys[k]]) {
 			return false
 		}
 	}

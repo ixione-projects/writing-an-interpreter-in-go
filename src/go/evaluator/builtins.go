@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
@@ -21,6 +22,14 @@ var builtins = map[string]*object.Builtin{
 			default:
 				return nil, toBuiltinError("len", args)
 			}
+		},
+	},
+	"puts": {
+		Fn: func(args ...object.Object) (object.Object, object.Interruption) {
+			for _, arg := range args {
+				fmt.Println(arg.Inspect())
+			}
+			return NULL, nil
 		},
 	},
 	"first": {

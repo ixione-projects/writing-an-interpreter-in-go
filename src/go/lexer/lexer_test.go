@@ -165,6 +165,17 @@ func TestNextToken(t *testing.T) {
 				{Type: token.EOF, Literal: ""},
 			},
 		},
+		{
+			input: `{"foo": "bar"}`,
+			tokens: []token.Token{
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.STRING, Literal: "\"foo\""},
+				{Type: token.COLON, Literal: ":"},
+				{Type: token.STRING, Literal: "\"bar\""},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.EOF, Literal: ""},
+			},
+		},
 	}
 
 	for i, test := range tests {

@@ -24,6 +24,6 @@ func TestString(t *testing.T) {
 	}
 
 	if "let ident=value;" != program.String() {
-		t.Errorf("String() ==> expected: <%s> but was: <%s>", "let ident=value;\n", program.String())
+		t.Errorf("String() ==> expected: <%s> but was: <%s>", "let ident=value;", program.String())
 	}
 }

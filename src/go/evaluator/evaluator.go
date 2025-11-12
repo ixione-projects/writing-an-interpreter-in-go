@@ -52,6 +52,10 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 		return evaluateStringLiteral(node.(*ast.StringLiteral))
 	case ast.ARRAY_LITERAL:
 		return evaluateArrayLiteral(node.(*ast.ArrayLiteral), env)
+	case ast.HASH_LITERAL:
+		return evaluateHashLiteral(node.(*ast.HashLiteral), env)
+	case ast.NULL_LITERAL:
+		return evaluateNullLiteral()
 	}
 	return nil, nil
 }
@@ -201,7 +205,7 @@ func evaluateAssignmentExpression(node *ast.AssignmentExpression, env *object.En
 			return rvalue, nil
 		}
 
-		return nil, toError("identifier not found: %s", lvalue.Value)
+		return nil, toError("unknown identifier: %s", lvalue.Value)
 	case *ast.SubscriptExpression:
 		baseValue, interrupt := Evaluate(lvalue.Base, env)
 		if interrupt != nil {
@@ -213,16 +217,16 @@ func evaluateAssignmentExpression(node *ast.AssignmentExpression, env *object.En
 			return nil, interrupt
 		}
 
-		subscript, ok := subscriptValue.(object.Number)
-		if !ok {
-			return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
-		}
-
 		switch base := baseValue.(type) {
 		case *object.Array:
+			subscript, ok := subscriptValue.(object.Number)
+			if !ok {
+				return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
+			}
+
 			index, valid := toNativeInt(subscript)
 			if !valid || index < 0 {
-				return nil, toError("unexpected subscript value: %s", subscript.Inspect())
+				return nil, toError("subscript value must be a positive whole number: %s", subscript.Inspect())
 			}
 
 			if index >= cap(base.Elements) {
@@ -236,14 +240,20 @@ func evaluateAssignmentExpression(node *ast.AssignmentExpression, env *object.En
 				base.Elements = base.Elements[:cap(base.Elements)]
 			}
 			base.Elements[index] = rvalue
-
-			return rvalue, nil
+		case *object.Hash:
+			key, ok := subscriptValue.(object.Hashable)
+			if !ok {
+				return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
+			}
+			base.Pairs[key.HashKey()] = object.HashPair{Key: key, Value: rvalue}
 		default:
-			return nil, toError("unknown operator: %s[%s]", base.Type(), subscript.Type())
+			return nil, toError("unknown operator: %s[%s]", base.Type(), subscriptValue.Type())
 		}
 	default:
 		panic(fmt.Errorf("unknown lvalue type: %s", node.LValue.Type()))
 	}
+
+	return rvalue, nil
 }
 
 func evaluateCallExpression(node *ast.CallExpression, env *object.Environment) (object.Object, object.Interruption) {
@@ -297,20 +307,31 @@ func evaluateSubscriptExpression(node *ast.SubscriptExpression, env *object.Envi
 		return nil, interrupt
 	}
 
-	subscript, ok := subscriptValue.(object.Number)
-	if !ok {
-		return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
-	}
-
 	switch base := baseValue.(type) {
 	case *object.Array:
+		subscript, ok := subscriptValue.(object.Number)
+		if !ok {
+			return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
+		}
+
 		index, valid := toNativeInt(subscript)
 		if !valid || index < 0 || index >= len(base.Elements) {
 			return NULL, nil
 		}
 		return base.Elements[index], nil
+	case *object.Hash:
+		key, ok := subscriptValue.(object.Hashable)
+		if !ok {
+			return nil, toError("unknown operator: %s[%s]", baseValue.Type(), subscriptValue.Type())
+		}
+
+		value, found := base.Pairs[key.HashKey()]
+		if !found {
+			return NULL, nil
+		}
+		return value.Value, nil
 	default:
-		return nil, toError("unknown operator: %s[%s]", base.Type(), subscript.Type())
+		return nil, toError("unknown operator: %s[%s]", base.Type(), subscriptValue.Type())
 	}
 }
 
@@ -327,7 +348,7 @@ func evaluateIdentifier(node *ast.Identifier, env *object.Environment) (object.O
 		return builtin, nil
 	}
 
-	return nil, toError("identifier not found: %s", node.Value)
+	return nil, toError("unknown identifier: %s", node.Value)
 }
 
 func evaluateNumberLiteral(node *ast.NumberLiteral) (object.Object, object.Interruption) {
@@ -352,6 +373,33 @@ func evaluateArrayLiteral(node *ast.ArrayLiteral, env *object.Environment) (obje
 		elements = append(elements, value)
 	}
 	return &object.Array{Elements: elements}, nil
+}
+
+func evaluateHashLiteral(node *ast.HashLiteral, env *object.Environment) (object.Object, object.Interruption) {
+	hash := &object.Hash{Pairs: map[object.HashKey]object.HashPair{}}
+	for _, keyNode := range node.Keys {
+		key, interrupt := Evaluate(keyNode, env)
+		if interrupt != nil {
+			return nil, interrupt
+		}
+
+		hashable, ok := key.(object.Hashable)
+		if !ok {
+			return nil, toError("unknown operator: HASH[%s]", key.Type())
+		}
+
+		value, interrupt := Evaluate(node.Pairs[keyNode], env)
+		if interrupt != nil {
+			return nil, interrupt
+		}
+
+		hash.Pairs[hashable.HashKey()] = object.HashPair{Key: key, Value: value}
+	}
+	return hash, nil
+}
+
+func evaluateNullLiteral() (object.Object, object.Interruption) {
+	return NULL, nil
 }
 
 func toBoolean(value bool) object.Boolean {

@@ -3,6 +3,7 @@ package object
 import (
 	"bytes"
 	"fmt"
+	"hash/fnv"
 	"strings"
 
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
@@ -17,6 +18,7 @@ const (
 	BOOLEAN
 	STRING
 	ARRAY
+	HASH
 	NULL
 )
 
@@ -109,6 +111,64 @@ func (a *Array) Inspect() string {
 	return out.String()
 }
 
+type Hashable interface {
+	Object
+	HashKey() HashKey
+}
+
+type HashKey struct {
+	Type  ObjectType
+	Value uint64
+}
+
+func (n Number) HashKey() HashKey {
+	return HashKey{n.Type(), uint64(n)}
+}
+
+func (b Boolean) HashKey() HashKey {
+	var value uint64
+	if b {
+		value = 1
+	} else {
+		value = 0
+	}
+	return HashKey{b.Type(), value}
+}
+
+func (s String) HashKey() HashKey {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return HashKey{s.Type(), h.Sum64()}
+}
+
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+
+type Hash struct {
+	Pairs map[HashKey]HashPair
+}
+
+func (h *Hash) Type() ObjectType {
+	return HASH
+}
+
+func (h *Hash) Inspect() string {
+	var out bytes.Buffer
+
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, pair.Key.Inspect()+": "+pair.Value.Inspect())
+	}
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
+
+	return out.String()
+}
+
 type Null struct{}
 
 func (n *Null) Type() ObjectType {
@@ -153,6 +213,7 @@ var objects = map[ObjectType]string{
 	BOOLEAN:  "BOOLEAN",
 	STRING:   "STRING",
 	ARRAY:    "ARRAY",
+	HASH:     "HASH",
 	NULL:     "NULL",
 }
 

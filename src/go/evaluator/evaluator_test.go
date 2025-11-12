@@ -22,7 +22,13 @@ func (n NumberTest) object()   {}
 func (b BooleanTest) object()  {}
 func (s StringTest) object()   {}
 func (a ArrayTest) object()    {}
+func (h HashTest) object()     {}
 func (n NullTest) object()     {}
+
+type HashableTest interface {
+	ObjectTest
+	hashable() object.Hashable
+}
 
 type FunctionTest struct {
 	Inspect string
@@ -34,8 +40,24 @@ type (
 	StringTest  string
 )
 
+func (n NumberTest) hashable() object.Hashable {
+	return object.Number(n)
+}
+
+func (b BooleanTest) hashable() object.Hashable {
+	return object.Boolean(b)
+}
+
+func (s StringTest) hashable() object.Hashable {
+	return object.String(s)
+}
+
 type ArrayTest struct {
 	Elements []ObjectTest
+}
+
+type HashTest struct {
+	Pairs map[HashableTest]ObjectTest
 }
 
 type NullTest struct{}
@@ -449,6 +471,60 @@ var suites = []struct {
 		},
 	},
 	{
+		name: "TestEvaluateHashExpression",
+		tests: []EvaluatorTest{
+			{
+				input: `let two = "two";
+					{
+						"one": 10 - 9,
+						two: 1 + 1,
+						"thr" + "ee": 6 / 2,
+						4: 4,
+						true: 5,
+						false: 6
+					}`,
+				object: HashTest{
+					map[HashableTest]ObjectTest{
+						StringTest("one"):   NumberTest(1),
+						StringTest("two"):   NumberTest(2),
+						StringTest("three"): NumberTest(3),
+						NumberTest(4):       NumberTest(4),
+						BooleanTest(true):   NumberTest(5),
+						BooleanTest(false):  NumberTest(6),
+					},
+				},
+			},
+			{
+				input:  `{"foo": 5}["foo"]`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `{"foo": 5}["bar"]`,
+				object: NullTest{},
+			},
+			{
+				input:  `let key = "foo"; {"foo": 5}[key]`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `{}["foo"]`,
+				object: NullTest{},
+			},
+			{
+				input:  `{5: 5}[5]`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `{true: 5}[true]`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `{false: 5}[false]`,
+				object: NumberTest(5),
+			},
+		},
+	},
+	{
 		name: "TestEvaluateInvalidExpression",
 		tests: []EvaluatorTest{
 			{
@@ -496,7 +572,15 @@ var suites = []struct {
 			},
 			{
 				input: `foobar`,
-				error: ErrorTest{"identifier not found: foobar"},
+				error: ErrorTest{"unknown identifier: foobar"},
+			},
+			{
+				input: `{"name": "Monkey"}[fn(x) { x }];`,
+				error: ErrorTest{"unknown operator: HASH[FUNCTION]"},
+			},
+			{
+				input: `999[1]`,
+				error: ErrorTest{"unknown operator: INTEGER[INTEGER]"},
 			},
 		},
 	},
@@ -530,6 +614,10 @@ var suites = []struct {
 			{
 				input:  `len([])`,
 				object: NumberTest(0),
+			},
+			{
+				input:  `puts("hello", "world!")`,
+				object: NullTest{},
 			},
 			{
 				input:  `first([1, 2, 3])`,
@@ -646,6 +734,10 @@ func testObject(tb testing.TB, i int, expected ObjectTest, actual object.Object)
 		if !testArray(tb, i, expected, actual) {
 			return false
 		}
+	case HashTest:
+		if !testHash(tb, i, expected, actual) {
+			return false
+		}
 	case NullTest:
 		if !testNull(tb, i, actual) {
 			return false
@@ -719,7 +811,7 @@ func testString(tb testing.TB, i int, expected StringTest, actual object.Object)
 func testArray(tb testing.TB, i int, expected ArrayTest, actual object.Object) bool {
 	array, ok := actual.(*object.Array)
 	if !ok {
-		tb.Errorf("test[%d] - actual.(*object.Array) ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Null{}, actual)
+		tb.Errorf("test[%d] - actual.(*object.Array) ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Array{}, actual)
 		return false
 	}
 
@@ -730,6 +822,37 @@ func testArray(tb testing.TB, i int, expected ArrayTest, actual object.Object) b
 
 	for j, element := range expected.Elements {
 		if !testObject(tb, i, element, array.Elements[j]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testHash(tb testing.TB, i int, expected HashTest, actual object.Object) bool {
+	hash, ok := actual.(*object.Hash)
+	if !ok {
+		tb.Errorf("test[%d] - actual.(*object.Hash) ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Hash{}, actual)
+		return false
+	}
+
+	if len(expected.Pairs) != len(hash.Pairs) {
+		tb.Errorf("test[%d] - len(hash.Pairs) ==> expected: <%d> but was: <%d>", i, len(expected.Pairs), len(hash.Pairs))
+		return false
+	}
+
+	for key, value := range expected.Pairs {
+		pair, found := hash.Pairs[key.hashable().HashKey()]
+		if !found {
+			tb.Errorf("test[%d] - hash.Pairs[HashKey()] ==> expected: <%s> but was: <%#v>", i, value, nil)
+			return false
+		}
+
+		if !testObject(tb, i, key, pair.Key) {
+			return false
+		}
+
+		if !testObject(tb, i, value, pair.Value) {
 			return false
 		}
 	}
