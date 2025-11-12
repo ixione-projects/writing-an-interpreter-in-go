@@ -13,6 +13,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	fmt.Printf(
 		"Hello %s! This is the Monkey programming language!\n",
 		user.Username,

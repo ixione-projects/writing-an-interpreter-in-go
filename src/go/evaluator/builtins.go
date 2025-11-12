@@ -7,7 +7,7 @@ import (
 )
 
 var builtins = map[string]*object.Builtin{
-	"len": &object.Builtin{
+	"len": {
 		Fn: func(args ...object.Object) (object.Object, object.Interruption) {
 			if len(args) != 1 {
 				return nil, toBuiltinError("len", args)
@@ -16,8 +16,86 @@ var builtins = map[string]*object.Builtin{
 			switch args[0].Type() {
 			case object.STRING:
 				return object.Number(len(args[0].(object.String))), nil
+			case object.ARRAY:
+				return object.Number(len(args[0].(*object.Array).Elements)), nil
 			default:
 				return nil, toBuiltinError("len", args)
+			}
+		},
+	},
+	"first": {
+		Fn: func(args ...object.Object) (object.Object, object.Interruption) {
+			if len(args) != 1 {
+				return nil, toBuiltinError("first", args)
+			}
+
+			switch args[0].Type() {
+			case object.ARRAY:
+				elements := args[0].(*object.Array).Elements
+				if len(elements) == 0 {
+					return NULL, nil
+				}
+				return elements[0], nil
+			default:
+				return nil, toBuiltinError("first", args)
+			}
+		},
+	},
+	"last": {
+		Fn: func(args ...object.Object) (object.Object, object.Interruption) {
+			if len(args) != 1 {
+				return nil, toBuiltinError("last", args)
+			}
+
+			switch args[0].Type() {
+			case object.ARRAY:
+				elements := args[0].(*object.Array).Elements
+				if len(elements) == 0 {
+					return NULL, nil
+				}
+				return elements[len(elements)-1], nil
+			default:
+				return nil, toBuiltinError("last", args)
+			}
+		},
+	},
+	"rest": {
+		Fn: func(args ...object.Object) (object.Object, object.Interruption) {
+			if len(args) != 1 {
+				return nil, toBuiltinError("rest", args)
+			}
+
+			switch args[0].Type() {
+			case object.ARRAY:
+				elements := args[0].(*object.Array).Elements
+				length := len(elements)
+				if length == 0 {
+					return NULL, nil
+				}
+				result := make([]object.Object, length-1)
+				copy(result, elements[1:])
+				return &object.Array{Elements: result}, nil
+			default:
+				return nil, toBuiltinError("rest", args)
+			}
+		},
+	},
+	"push": {
+		Fn: func(args ...object.Object) (object.Object, object.Interruption) {
+			if len(args) != 2 {
+				return nil, toBuiltinError("push", args)
+			}
+
+			switch args[0].Type() {
+			case object.ARRAY:
+				elements := args[0].(*object.Array).Elements
+				length := len(elements)
+				result := make([]object.Object, length+1)
+				copy(result, elements)
+				result[length] = args[1]
+				return &object.Array{Elements: result}, nil
+			default:
+				return nil, toBuiltinError("push", args)
 			}
 		},
 	},

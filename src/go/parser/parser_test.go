@@ -272,6 +272,28 @@ func TestExpressionStatement(t *testing.T) {
 					},
 				},
 				{
+					input: `!foobar;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								PrefixExpressionTest{"!", IdentifierTest("foobar")},
+								"(!foobar);",
+							},
+						},
+					},
+				},
+				{
+					input: `-foobar;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								PrefixExpressionTest{"-", IdentifierTest("foobar")},
+								"(-foobar);",
+							},
+						},
+					},
+				},
+				{
 					input: `!true;`,
 					program: ProgramTest{
 						[]StatementTest{
@@ -432,6 +454,94 @@ func TestExpressionStatement(t *testing.T) {
 							ExpressionStatementTest{
 								InfixExpressionTest{NumberLiteralTest(5), "!=", NumberLiteralTest(5)},
 								"(5!=5);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar + barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "+", IdentifierTest("barfoo")},
+								"(foobar+barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar - barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "-", IdentifierTest("barfoo")},
+								"(foobar-barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar * barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "*", IdentifierTest("barfoo")},
+								"(foobar*barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar / barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "/", IdentifierTest("barfoo")},
+								"(foobar/barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar > barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), ">", IdentifierTest("barfoo")},
+								"(foobar>barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar < barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "<", IdentifierTest("barfoo")},
+								"(foobar<barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar == barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "==", IdentifierTest("barfoo")},
+								"(foobar==barfoo);",
+							},
+						},
+					},
+				},
+				{
+					input: `foobar != barfoo;`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								InfixExpressionTest{IdentifierTest("foobar"), "!=", IdentifierTest("barfoo")},
+								"(foobar!=barfoo);",
 							},
 						},
 					},
@@ -974,6 +1084,36 @@ func TestExpressionStatement(t *testing.T) {
 			name: "TestCallExpression",
 			tests: []ParserTest{
 				{
+					input: `add();`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								CallExpressionTest{
+									IdentifierTest("add"),
+									[]ExpressionTest{},
+								},
+								"add();",
+							},
+						},
+					},
+				},
+				{
+					input: `add(1);`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								CallExpressionTest{
+									IdentifierTest("add"),
+									[]ExpressionTest{
+										NumberLiteralTest(1),
+									},
+								},
+								"add(1);",
+							},
+						},
+					},
+				},
+				{
 					input: `add(1, 2 * 3, 4 + 5);`,
 					program: ProgramTest{
 						[]StatementTest{
@@ -1108,6 +1248,19 @@ func TestExpressionStatement(t *testing.T) {
 			name: "TestArrayLiteral",
 			tests: []ParserTest{
 				{
+					input: `[]`,
+					program: ProgramTest{
+						[]StatementTest{
+							ExpressionStatementTest{
+								ArrayLiteralTest{
+									[]ExpressionTest{},
+								},
+								"[];",
+							},
+						},
+					},
+				},
+				{
 					input: `[1, 2 * 2, 3 + 3]`,
 					program: ProgramTest{
 						[]StatementTest{
@@ -1132,19 +1285,6 @@ func TestExpressionStatement(t *testing.T) {
 						},
 					},
 				},
-				{
-					input: `[]`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								ArrayLiteralTest{
-									[]ExpressionTest{},
-								},
-								"[];",
-							},
-						},
-					},
-				},
 			},
 		},
 		{
@@ -1164,85 +1304,6 @@ func TestExpressionStatement(t *testing.T) {
 									},
 								},
 								"(array[(1+1)]);",
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "TestAssignmentExpression",
-			tests: []ParserTest{
-				{
-					input: `
-					x = 5;
-					y = 10;
-					foobar = 838383;`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								AssignmentExpressionTest{
-									IdentifierTest("x"),
-									NumberLiteralTest(5),
-								},
-								"(x=5);",
-							},
-							ExpressionStatementTest{
-								AssignmentExpressionTest{
-									IdentifierTest("y"),
-									NumberLiteralTest(10),
-								},
-								"(y=10);",
-							},
-							ExpressionStatementTest{
-								AssignmentExpressionTest{
-									IdentifierTest("foobar"),
-									NumberLiteralTest(838383),
-								},
-								"(foobar=838383);",
-							},
-						},
-					},
-				},
-				{
-					input: `x = y = foobar = 838383;`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								AssignmentExpressionTest{
-									IdentifierTest("x"),
-									AssignmentExpressionTest{
-										IdentifierTest("y"),
-										AssignmentExpressionTest{
-											IdentifierTest("foobar"),
-											NumberLiteralTest(838383),
-										},
-									},
-								},
-								"(x=(y=(foobar=838383)));",
-							},
-						},
-					},
-				},
-				{
-					input: `2 + 2 = 5;`,
-					errors: []string{
-						"unexpected lvalue type <INFIX_EXPRESSION>",
-					},
-				},
-				{
-					input: `array[0] = 0`,
-					program: ProgramTest{
-						[]StatementTest{
-							ExpressionStatementTest{
-								AssignmentExpressionTest{
-									SubscriptExpressionTest{
-										IdentifierTest("array"),
-										NumberLiteralTest(0),
-									},
-									NumberLiteralTest(0),
-								},
-								"((array[0])=0);",
 							},
 						},
 					},

@@ -49,7 +49,7 @@ var suites = []struct {
 	tests []EvaluatorTest
 }{
 	{
-		name: "TestNumber",
+		name: "TestEvaluateNumberExpression",
 		tests: []EvaluatorTest{
 			{
 				input:  `5`,
@@ -111,173 +111,10 @@ var suites = []struct {
 				input:  `(5 + 10 * 2 + 15 / 3) * 2 + -10`,
 				object: NumberTest(50),
 			},
-			{
-				input:  `if (true) { 10 }`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `if (1) { 10 }`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `if (1 < 2) { 10 }`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `if (1 > 2) { 10 } else { 20 }`,
-				object: NumberTest(20),
-			},
-			{
-				input:  `if (1 < 2) { 10 } else { 20 }`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `return 10;`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `return 10; 9;`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `return 2 * 5; 9;`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `9; return 2 * 5; 9;`,
-				object: NumberTest(10),
-			},
-			{
-				input: `
-					if (10 > 1) {
-						if (10 > 1) {
-							return 10;
-						}
-
-						return 1;
-					}`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `let a = 5; a;`,
-				object: NumberTest(5),
-			},
-			{
-				input:  `let a = 5 * 5; a;`,
-				object: NumberTest(25),
-			},
-			{
-				input:  `let a = 5; let b = a; b;`,
-				object: NumberTest(5),
-			},
-			{
-				input:  `let a = 5; let b = a; let c = a + b + 5; c;`,
-				object: NumberTest(15),
-			},
-			{
-				input:  `let identity = fn(x) { x; }; identity(5);`,
-				object: NumberTest(5),
-			},
-			{
-				input:  `let identity = fn(x) { return x; }; identity(5);`,
-				object: NumberTest(5),
-			},
-			{
-				input:  `let double = fn(x) { x * 2; }; double(5);`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `let add = fn(x, y) { x + y; }; add(5, 5);`,
-				object: NumberTest(10),
-			},
-			{
-				input:  `let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));`,
-				object: NumberTest(20),
-			},
-			{
-				input:  `fn(x) { x; }(5)`,
-				object: NumberTest(5),
-			},
-			{
-				input: `
-					let f = fn(x) {
-						return x;
-						x + 10;
-					};
-					f(10);`,
-				object: NumberTest(10),
-			},
-			{
-				input: `
-					let f = fn(x) {
-						let result = x + 10;
-						return result;
-						return 10;
-					};
-					f(10);`,
-				object: NumberTest(20),
-			},
-			{
-				input: `
-					let newAdder = fn(x) {
-						fn(y) { x + y };
-					};
-					let addTwo = newAdder(2);
-					addTwo(2);`,
-				object: NumberTest(4),
-			},
-			{
-				input:  `len("")`,
-				object: NumberTest(0),
-			},
-			{
-				input:  `len("four")`,
-				object: NumberTest(4),
-			},
-			{
-				input:  `len("hello world")`,
-				object: NumberTest(11),
-			},
-			{
-				input:  `[1, 2, 3][0]`,
-				object: NumberTest(1),
-			},
-			{
-				input:  `[1, 2, 3][1]`,
-				object: NumberTest(2),
-			},
-			{
-				input:  `[1, 2, 3][2]`,
-				object: NumberTest(3),
-			},
-			{
-				input:  `let i = 0; [1][i];`,
-				object: NumberTest(1),
-			},
-			{
-				input:  `[1, 2, 3][1 + 1];`,
-				object: NumberTest(3),
-			},
-			{
-				input:  `let array = [1, 2, 3]; array[2];`,
-				object: NumberTest(3),
-			},
-			{
-				input:  `let array = [1, 2, 3]; array[0] + array[1] + array[2];`,
-				object: NumberTest(6),
-			},
-			{
-				input:  `let array = [1, 2, 3]; let i = array[0]; array[i];`,
-				object: NumberTest(2),
-			},
-			{
-				input:  `[1, 2, 3][3] = 4`,
-				object: NumberTest(4),
-			},
 		},
 	},
 	{
-		name: "TestBoolean",
+		name: "TestEvaluateBooleanExpression",
 		tests: []EvaluatorTest{
 			{
 				input:  `true`,
@@ -286,30 +123,6 @@ var suites = []struct {
 			{
 				input:  `false`,
 				object: BooleanTest(false),
-			},
-			{
-				input:  `!true`,
-				object: BooleanTest(false),
-			},
-			{
-				input:  `!false`,
-				object: BooleanTest(true),
-			},
-			{
-				input:  `!5`,
-				object: BooleanTest(false),
-			},
-			{
-				input:  `!!true`,
-				object: BooleanTest(true),
-			},
-			{
-				input:  `!!false`,
-				object: BooleanTest(false),
-			},
-			{
-				input:  `!!5`,
-				object: BooleanTest(true),
 			},
 			{
 				input:  `1 < 2`,
@@ -379,18 +192,251 @@ var suites = []struct {
 				input:  `(1 > 2) == false`,
 				object: BooleanTest(true),
 			},
+			{
+				input:  `!true`,
+				object: BooleanTest(false),
+			},
+			{
+				input:  `!false`,
+				object: BooleanTest(true),
+			},
+			{
+				input:  `!5`,
+				object: BooleanTest(false),
+			},
+			{
+				input:  `!!true`,
+				object: BooleanTest(true),
+			},
+			{
+				input:  `!!false`,
+				object: BooleanTest(false),
+			},
+			{
+				input:  `!!5`,
+				object: BooleanTest(true),
+			},
 		},
 	},
 	{
-		name: "TestNull",
+		name: "TestEvaluateIfExpression",
 		tests: []EvaluatorTest{
+			{
+				input:  `if (true) { 10 }`,
+				object: NumberTest(10),
+			},
 			{
 				input:  `if (false) { 10 }`,
 				object: NullTest{},
 			},
 			{
+				input:  `if (1) { 10 }`,
+				object: NumberTest(10),
+			},
+			{
+				input:  `if (1 < 2) { 10 }`,
+				object: NumberTest(10),
+			},
+			{
 				input:  `if (1 > 2) { 10 }`,
 				object: NullTest{},
+			},
+			{
+				input:  `if (1 > 2) { 10 } else { 20 }`,
+				object: NumberTest(20),
+			},
+			{
+				input:  `if (1 < 2) { 10 } else { 20 }`,
+				object: NumberTest(10),
+			},
+		},
+	},
+	{
+		name: "TestEvaluateReturnStatement",
+		tests: []EvaluatorTest{
+			{
+				input:  `return 10;`,
+				object: NumberTest(10),
+			},
+			{
+				input:  `return 10; 9;`,
+				object: NumberTest(10),
+			},
+			{
+				input:  `return 2 * 5; 9;`,
+				object: NumberTest(10),
+			},
+			{
+				input:  `9; return 2 * 5; 9;`,
+				object: NumberTest(10),
+			},
+			{
+				input: `
+					if (10 > 1) {
+						if (10 > 1) {
+							return 10;
+						}
+
+						return 1;
+					}`,
+				object: NumberTest(10),
+			},
+			{
+				input: `
+					let f = fn(x) {
+						return 10;
+						x + 10;
+					};
+					f(10);`,
+				object: NumberTest(10),
+			},
+			{
+				input: `
+					let f = fn(x) {
+						let result = x + 10;
+						return result;
+						return 10;
+					};
+					f(10);`,
+				object: NumberTest(20),
+			},
+		},
+	},
+	{
+		name: "TestEvaluateLetStatement",
+		tests: []EvaluatorTest{
+			{
+				input:  `let a = 5; a;`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `let a = 5 * 5; a;`,
+				object: NumberTest(25),
+			},
+			{
+				input:  `let a = 5; let b = a; b;`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `let a = 5; let b = a; let c = a + b + 5; c;`,
+				object: NumberTest(15),
+			},
+		},
+	},
+	{
+		name: "TestEvaluateFunctionExpression",
+		tests: []EvaluatorTest{
+			{
+				input:  `fn(x) { x + 2; };`,
+				object: FunctionTest{"<fn (x)>"},
+			},
+			{
+				input:  `let identity = fn(x) { x; }; identity(5);`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `let identity = fn(x) { return x; }; identity(5);`,
+				object: NumberTest(5),
+			},
+			{
+				input:  `let double = fn(x) { x * 2; }; double(5);`,
+				object: NumberTest(10),
+			},
+			{
+				input:  `let add = fn(x, y) { x + y; }; add(5, 5);`,
+				object: NumberTest(10),
+			},
+			{
+				input:  `let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));`,
+				object: NumberTest(20),
+			},
+			{
+				input:  `fn(x) { x; }(5)`,
+				object: NumberTest(5),
+			},
+			{
+				input: `
+					let first = 10;
+					let second = 10;
+					let third = 10;
+
+					let ourFunction = fn(first) {
+						let second = 20;
+
+						first + second + third;
+					};
+
+					ourFunction(20) + first + second;`,
+				object: NumberTest(70),
+			},
+			{
+				input: `
+					let newAdder = fn(x) {
+						fn(y) { x + y };
+					};
+					let addTwo = newAdder(2);
+					addTwo(2);`,
+				object: NumberTest(4),
+			},
+		},
+	},
+	{
+		name: "TestEvaluateStringExpression",
+		tests: []EvaluatorTest{
+			{
+				input:  `"Hello World!"`,
+				object: StringTest("Hello World!"),
+			},
+			{
+				input:  `"Hello" + " " + "World!"`,
+				object: StringTest("Hello World!"),
+			},
+		},
+	},
+	{
+		name: "TestEvaluateArrayExpression",
+		tests: []EvaluatorTest{
+			{
+				input: `[1, 2 * 2, 3 + 3]`,
+				object: ArrayTest{
+					[]ObjectTest{
+						NumberTest(1),
+						NumberTest(4),
+						NumberTest(6),
+					},
+				},
+			},
+			{
+				input:  `[1, 2, 3][0]`,
+				object: NumberTest(1),
+			},
+			{
+				input:  `[1, 2, 3][1]`,
+				object: NumberTest(2),
+			},
+			{
+				input:  `[1, 2, 3][2]`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `let i = 0; [1][i];`,
+				object: NumberTest(1),
+			},
+			{
+				input:  `[1, 2, 3][1 + 1];`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `let array = [1, 2, 3]; array[2];`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `let array = [1, 2, 3]; array[0] + array[1] + array[2];`,
+				object: NumberTest(6),
+			},
+			{
+				input:  `let array = [1, 2, 3]; let i = array[0]; array[i];`,
+				object: NumberTest(2),
 			},
 			{
 				input:  `[1, 2, 3][3]`,
@@ -403,7 +449,7 @@ var suites = []struct {
 		},
 	},
 	{
-		name: "TestError",
+		name: "TestEvaluateInvalidExpression",
 		tests: []EvaluatorTest{
 			{
 				input: `5 + true;`,
@@ -422,8 +468,16 @@ var suites = []struct {
 				error: ErrorTest{"unknown operator: BOOLEAN + BOOLEAN"},
 			},
 			{
+				input: `true + false + true + false;`,
+				error: ErrorTest{"unknown operator: BOOLEAN + BOOLEAN"},
+			},
+			{
 				input: `5; true + false; 5`,
 				error: ErrorTest{"unknown operator: BOOLEAN + BOOLEAN"},
+			},
+			{
+				input: `"Hello" - "World"`,
+				error: ErrorTest{"unknown operator: STRING - STRING"},
 			},
 			{
 				input: `if (10 > 1) { true + false; }`,
@@ -444,9 +498,22 @@ var suites = []struct {
 				input: `foobar`,
 				error: ErrorTest{"identifier not found: foobar"},
 			},
+		},
+	},
+	{
+		name: "TestEvaluateBuiltinFunction",
+		tests: []EvaluatorTest{
 			{
-				input: `"Hello" - "World"`,
-				error: ErrorTest{"unknown operator: STRING - STRING"},
+				input:  `len("")`,
+				object: NumberTest(0),
+			},
+			{
+				input:  `len("four")`,
+				object: NumberTest(4),
+			},
+			{
+				input:  `len("hello world")`,
+				object: NumberTest(11),
 			},
 			{
 				input: `len(1)`,
@@ -457,57 +524,61 @@ var suites = []struct {
 				error: ErrorTest{"argument(s) to `len` not supported: (STRING, STRING)"},
 			},
 			{
-				input: `[1, 2, 3][-1] = 0`,
-				error: ErrorTest{"unexpected subscript value: -1"},
-			},
-		},
-	},
-	{
-		name: "TestFunction",
-		tests: []EvaluatorTest{
-			{
-				input:  `fn(x) { x + 2; };`,
-				object: FunctionTest{"<fn (x)>"},
-			},
-		},
-	},
-	{
-		name: "TestString",
-		tests: []EvaluatorTest{
-			{
-				input:  `"Hello World!"`,
-				object: StringTest("Hello World!"),
+				input:  `len([1, 2, 3])`,
+				object: NumberTest(3),
 			},
 			{
-				input:  `"Hello" + " " + "World!"`,
-				object: StringTest("Hello World!"),
+				input:  `len([])`,
+				object: NumberTest(0),
 			},
-		},
-	},
-	{
-		name: "TestArray",
-		tests: []EvaluatorTest{
 			{
-				input: `let array = [1]; array[3] = 4; array`,
+				input:  `first([1, 2, 3])`,
+				object: NumberTest(1),
+			},
+			{
+				input:  `first([])`,
+				object: NullTest{},
+			},
+			{
+				input: `first(1)`,
+				error: ErrorTest{"argument(s) to `first` not supported: (INTEGER)"},
+			},
+			{
+				input:  `last([1, 2, 3])`,
+				object: NumberTest(3),
+			},
+			{
+				input:  `last([])`,
+				object: NullTest{},
+			},
+			{
+				input: `last(1)`,
+				error: ErrorTest{"argument(s) to `last` not supported: (INTEGER)"},
+			},
+			{
+				input: `rest([1, 2, 3])`,
+				object: ArrayTest{
+					[]ObjectTest{
+						NumberTest(2),
+						NumberTest(3),
+					},
+				},
+			},
+			{
+				input:  `rest([])`,
+				object: NullTest{},
+			},
+			{
+				input: `push([], 1)`,
 				object: ArrayTest{
 					[]ObjectTest{
 						NumberTest(1),
-						NullTest{},
-						NullTest{},
-						NumberTest(4),
 					},
 				},
 			},
 			{
-				input: `let array = []; array[3] = 4; array`,
-				object: ArrayTest{
-					[]ObjectTest{
-						NullTest{},
-						NullTest{},
-						NullTest{},
-						NumberTest(4),
-					},
-				},
+				input: `push(1, 1)`,
+				error: ErrorTest{"argument(s) to `push` not supported: (INTEGER, INTEGER)"},
 			},
 		},
 	},
@@ -535,15 +606,20 @@ func testEvaluator(tb testing.TB, i int, test EvaluatorTest) {
 		tb.Fatalf("test[%d] - %s", i, test.input)
 	}
 
-	object, interruption := Evaluate(program, object.NewEnvironment(nil))
+	value, interrupt := Evaluate(program, object.NewEnvironment(nil))
 	if test.error.Message == "" {
-		if !testObject(tb, i, test.object, object) {
+		if interrupt != nil {
+			tb.Errorf("test[%d] - interrupt ==> expected: <%#v> but was: <%s>", i, nil, interrupt.(*object.Error).Message)
+			tb.Fatalf("test[%d] - %s", i, program.String())
+		}
+
+		if !testObject(tb, i, test.object, value) {
 			tb.Fatalf("test[%d] - %s", i, program.String())
 		}
 		return
 	}
 
-	if !testError(tb, i, test.error, interruption) {
+	if !testError(tb, i, test.error, interrupt) {
 		tb.Fatalf("test[%d] - %s", i, program.String())
 	}
 }
