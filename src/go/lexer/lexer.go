@@ -11,7 +11,8 @@ type Lexer struct {
 	start   int
 	current int
 
-	ch byte
+	ch  byte
+	eof bool
 
 	tokens []token.Token
 }
@@ -20,29 +21,42 @@ func NewLexer(input string) *Lexer {
 	return &Lexer{input: input, tokens: []token.Token{}}
 }
 
-func (l *Lexer) Token(index int) token.Token {
-	if len(l.tokens) < index+1 {
-		l.ensure(index + 1 - len(l.tokens))
-	}
-	return l.tokens[index]
+func (l *Lexer) BufferLength() int {
+	return len(l.tokens)
 }
 
-func (l *Lexer) ensure(n int) { // TODO: this can be more efficient
-	tokens := l.tokens
-	l.tokens = []token.Token{}
-	for range n {
-		tokens = append(tokens, l.NextToken())
+func (l *Lexer) Token(index int) token.Token {
+	var ok bool = false
+	if l.BufferLength() < index+1 {
+		ok = l.ensure(index + 1 - len(l.tokens))
 	}
-	l.tokens = append(l.tokens, tokens...)
+
+	if ok {
+		return l.tokens[index]
+	}
+	return l.tokens[len(l.tokens)-1]
+}
+
+func (l *Lexer) ensure(n int) bool {
+	for range n {
+		tok := l.NextToken()
+		if tok.Type == token.EOF {
+			return false
+		}
+	}
+	return true
+}
+
+func (l *Lexer) Tokens() []token.Token {
+	for l.tokens[len(l.tokens)-1].Type != token.EOF {
+		l.NextToken()
+	}
+	return l.tokens
 }
 
 func (l *Lexer) NextToken() token.Token {
-	if len(l.tokens) > 0 {
-		tok := l.tokens[0]
-		if len(l.tokens) != 1 || tok.Type != token.EOF {
-			l.tokens = l.tokens[1:]
-		}
-		return tok
+	if l.eof {
+		return l.tokens[len(l.tokens)-1]
 	}
 
 	for !l.isEOF() {
@@ -124,6 +138,7 @@ func (l *Lexer) NextToken() token.Token {
 	}
 
 	l.start = l.current
+	l.eof = true
 	return l.emit(token.EOF)
 }
 
@@ -132,10 +147,12 @@ func (l *Lexer) ident() token.Token {
 		l.next()
 	}
 	ident := l.input[l.start:l.current]
-	return token.Token{
+	tok := token.Token{
 		Type:    token.LookupIdent(ident),
 		Literal: ident,
 	}
+	l.tokens = append(l.tokens, tok)
+	return tok
 }
 
 func (l *Lexer) number() token.Token {
@@ -157,10 +174,12 @@ func (l *Lexer) number() token.Token {
 		}
 	}
 
-	return token.Token{
+	tok := token.Token{
 		Type:    token.NUMBER,
 		Literal: l.input[l.start:l.current],
 	}
+	l.tokens = append(l.tokens, tok)
+	return tok
 }
 
 func (l *Lexer) string() token.Token {
@@ -178,17 +197,21 @@ func (l *Lexer) string() token.Token {
 
 	l.next()
 
-	return token.Token{
+	tok := token.Token{
 		Type:    token.STRING,
 		Literal: l.input[l.start:l.current],
 	}
+	l.tokens = append(l.tokens, tok)
+	return tok
 }
 
 func (l *Lexer) emit(ttype token.TokenType) token.Token {
-	return token.Token{
+	tok := token.Token{
 		Type:    ttype,
 		Literal: l.input[l.start:l.current],
 	}
+	l.tokens = append(l.tokens, tok)
+	return tok
 }
 
 func (l *Lexer) skip(chars ...byte) {

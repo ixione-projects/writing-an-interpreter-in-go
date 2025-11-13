@@ -195,20 +195,19 @@ func TestNextToken(t *testing.T) {
 
 func TestToken(t *testing.T) {
 	tests := []struct {
-		input     string
-		index     int
-		lookahead token.Token
-		tokens    []token.Token
+		input string
+		index int
+		token token.Token
+		rest  []token.Token
 	}{
 		{
 			input: `=+(){},;`,
 			index: 0,
-			lookahead: token.Token{
+			token: token.Token{
 				Type:    token.ASSIGN,
 				Literal: "=",
 			},
-			tokens: []token.Token{
-				{Type: token.ASSIGN, Literal: "="},
+			rest: []token.Token{
 				{Type: token.PLUS, Literal: "+"},
 				{Type: token.LPAREN, Literal: "("},
 				{Type: token.RPAREN, Literal: ")"},
@@ -222,16 +221,11 @@ func TestToken(t *testing.T) {
 		{
 			input: `=+(){},;`,
 			index: 4,
-			lookahead: token.Token{
+			token: token.Token{
 				Type:    token.LBRACE,
 				Literal: "{",
 			},
-			tokens: []token.Token{
-				{Type: token.ASSIGN, Literal: "="},
-				{Type: token.PLUS, Literal: "+"},
-				{Type: token.LPAREN, Literal: "("},
-				{Type: token.RPAREN, Literal: ")"},
-				{Type: token.LBRACE, Literal: "{"},
+			rest: []token.Token{
 				{Type: token.RBRACE, Literal: "}"},
 				{Type: token.COMMA, Literal: ","},
 				{Type: token.SEMI, Literal: ";"},
@@ -241,16 +235,58 @@ func TestToken(t *testing.T) {
 		{
 			input: `=+(){},;`,
 			index: 8,
-			lookahead: token.Token{
+			token: token.Token{
 				Type:    token.EOF,
 				Literal: "",
 			},
-			tokens: []token.Token{
+			rest: []token.Token{},
+		},
+	}
+
+	for i, test := range tests {
+		l := NewLexer(test.input)
+		token := l.Token(test.index)
+		if test.token.Type != token.Type {
+			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.token.Type, token.Type)
+		}
+
+		if test.token.Literal != token.Literal {
+			t.Errorf("test[%d] - wrong literal ==> expected: <%q> but was: <%q>", i, test.token.Literal, token.Literal)
+		}
+
+		for j, expected := range test.rest {
+			actual := l.NextToken()
+			if expected.Type != actual.Type {
+				t.Errorf("test[%d][%d] - wrong type ==> expected: <%q> but was: <%q>", i, j, expected.Type, actual.Type)
+			}
+
+			if expected.Literal != actual.Literal {
+				t.Errorf("test[%d][%d] - wrong literal ==> expected: <%q> but was: <%q>", i, j, expected.Literal, actual.Literal)
+			}
+		}
+	}
+}
+
+func TestTokenLookahead(t *testing.T) {
+	tests := []struct {
+		input string
+		first []token.Token
+		index int
+		token token.Token
+		rest  []token.Token
+	}{
+		{
+			input: `=+(){},;`,
+			first: []token.Token{
 				{Type: token.ASSIGN, Literal: "="},
 				{Type: token.PLUS, Literal: "+"},
-				{Type: token.LPAREN, Literal: "("},
-				{Type: token.RPAREN, Literal: ")"},
-				{Type: token.LBRACE, Literal: "{"},
+			},
+			index: 4,
+			token: token.Token{
+				Type:    token.LBRACE,
+				Literal: "{",
+			},
+			rest: []token.Token{
 				{Type: token.RBRACE, Literal: "}"},
 				{Type: token.COMMA, Literal: ","},
 				{Type: token.SEMI, Literal: ";"},
@@ -261,16 +297,27 @@ func TestToken(t *testing.T) {
 
 	for i, test := range tests {
 		l := NewLexer(test.input)
+		for j, expected := range test.first {
+			actual := l.NextToken()
+			if expected.Type != actual.Type {
+				t.Errorf("test[%d][%d] - wrong type ==> expected: <%q> but was: <%q>", i, j, expected.Type, actual.Type)
+			}
+
+			if expected.Literal != actual.Literal {
+				t.Errorf("test[%d][%d] - wrong literal ==> expected: <%q> but was: <%q>", i, j, expected.Literal, actual.Literal)
+			}
+		}
+
 		token := l.Token(test.index)
-		if test.lookahead.Type != token.Type {
-			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.lookahead.Type, token.Type)
+		if test.token.Type != token.Type {
+			t.Errorf("test[%d] - wrong type ==> expected: <%q> but was: <%q>", i, test.token.Type, token.Type)
 		}
 
-		if test.lookahead.Literal != token.Literal {
-			t.Errorf("test[%d] - wrong literal ==> expected: <%q> but was: <%q>", i, test.lookahead.Literal, token.Literal)
+		if test.token.Literal != token.Literal {
+			t.Errorf("test[%d] - wrong literal ==> expected: <%q> but was: <%q>", i, test.token.Literal, token.Literal)
 		}
 
-		for j, expected := range test.tokens {
+		for j, expected := range test.rest {
 			actual := l.NextToken()
 			if expected.Type != actual.Type {
 				t.Errorf("test[%d][%d] - wrong type ==> expected: <%q> but was: <%q>", i, j, expected.Type, actual.Type)

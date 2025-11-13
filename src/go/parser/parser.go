@@ -11,6 +11,8 @@ import (
 )
 
 type Parser struct {
+	current int
+
 	l      *lexer.Lexer
 	errors []string
 	debug  bool
@@ -88,7 +90,6 @@ func NewParser(input string, debug bool) *Parser {
 		token.ELSE:    {nil, nil, NONE},
 		token.RETURN:  {nil, nil, NONE},
 		token.NULL:    {p.parseNullLiteral, nil, NONE},
-		token.WHILE:   {nil, nil, NONE},
 	}
 
 	return p
@@ -614,17 +615,25 @@ func (p *Parser) expect(ttype token.TokenType) bool {
 }
 
 func (p *Parser) peek0() token.Token {
-	return p.l.Token(0)
+	if p.tok.Type == token.EOF {
+		return p.tok
+	}
+	return p.l.Token(p.current)
 }
 
 func (p *Parser) peek1() token.Token {
-	return p.l.Token(1)
+	if p.tok.Type == token.EOF {
+		return p.tok
+	}
+	return p.l.Token(p.current + 1)
 }
 
 func (p *Parser) next() {
-	if p.l.NextToken(); p.tok.Type != token.EOF {
-		p.tok = p.l.Token(0)
+	if p.tok.Type == token.EOF {
+		return
 	}
+	p.current += 1
+	p.tok = p.l.Token(p.current)
 }
 
 func (p *Parser) getRule(ttype token.TokenType) parseRule {
