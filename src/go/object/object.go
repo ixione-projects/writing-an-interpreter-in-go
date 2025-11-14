@@ -14,12 +14,14 @@ type ObjectType int
 const (
 	FUNCTION ObjectType = iota
 	BUILTIN
+	MACRO
 	NUMBER
 	BOOLEAN
 	STRING
 	ARRAY
 	HASH
 	NULL
+	QUOTE
 )
 
 type Object interface {
@@ -28,8 +30,8 @@ type Object interface {
 }
 
 type Function struct {
-	Declaration *ast.FunctionLiteral
-	Closure     *Environment
+	Literal *ast.FunctionLiteral
+	Closure *Environment
 }
 
 func (f *Function) Type() ObjectType {
@@ -38,24 +40,61 @@ func (f *Function) Type() ObjectType {
 
 func (f *Function) Inspect() string {
 	params := []string{}
-	for _, param := range f.Declaration.Parameters {
+	for _, param := range f.Literal.Parameters {
 		params = append(params, param.Value)
 	}
 	return "<fn (" + strings.Join(params, ", ") + ")>"
 }
 
-type BuiltinFunction func(args ...Object) (Object, Interruption)
+type BuiltinCall func(ctx *Environment, args ...Object) (Object, Interruption)
 
-type Builtin struct {
-	Fn BuiltinFunction
+type Builtin interface {
+	Object
+	builtin()
 }
 
-func (b *Builtin) Type() ObjectType {
+func (bf *BuiltinFunction) builtin() {}
+func (bm *BuiltinMacro) builtin()    {}
+
+type BuiltinFunction struct {
+	Fn BuiltinCall
+}
+
+func (bf *BuiltinFunction) Type() ObjectType {
 	return BUILTIN
 }
 
-func (b *Builtin) Inspect() string {
+func (bf *BuiltinFunction) Inspect() string {
 	return "<fn builtin>"
+}
+
+type BuiltinMacro struct {
+	Fn BuiltinCall
+}
+
+func (bm *BuiltinMacro) Type() ObjectType {
+	return BUILTIN
+}
+
+func (bm *BuiltinMacro) Inspect() string {
+	return "<fn builtin>"
+}
+
+type Macro struct {
+	Declaration *ast.MacroStatement
+	Environment *Environment
+}
+
+func (m *Macro) Type() ObjectType {
+	return MACRO
+}
+
+func (m *Macro) Inspect() string {
+	params := []string{}
+	for _, param := range m.Declaration.Parameters {
+		params = append(params, param.Value)
+	}
+	return fmt.Sprintf("<macro %s(%s)>", m.Declaration.Name.Value, strings.Join(params, ", "))
 }
 
 type (
@@ -179,6 +218,18 @@ func (n *Null) Inspect() string {
 	return "null"
 }
 
+type Quote struct {
+	Node ast.Expression
+}
+
+func (q *Quote) Type() ObjectType {
+	return BUILTIN
+}
+
+func (q *Quote) Inspect() string {
+	return "QUOTE(" + q.Node.String() + ")"
+}
+
 type InterruptionType int
 
 const (
@@ -188,6 +239,7 @@ const (
 
 type Interruption interface {
 	Type() InterruptionType
+	Inspect() string
 }
 
 type ReturnValue struct {
@@ -198,12 +250,20 @@ func (rv *ReturnValue) Type() InterruptionType {
 	return RETURN_VALUE
 }
 
+func (rv *ReturnValue) Inspect() string {
+	return rv.Value.Inspect()
+}
+
 type Error struct {
 	Message string
 }
 
 func (e *Error) Type() InterruptionType {
 	return ERROR
+}
+
+func (e *Error) Inspect() string {
+	return "ERROR: " + e.Message
 }
 
 var objects = map[ObjectType]string{
@@ -215,6 +275,7 @@ var objects = map[ObjectType]string{
 	ARRAY:    "ARRAY",
 	HASH:     "HASH",
 	NULL:     "NULL",
+	QUOTE:    "QUOTE",
 }
 
 func (ot ObjectType) String() string {

@@ -28,6 +28,8 @@ const (
 	_ precedence = iota
 	NONE
 	ASSIGNMENT
+	OR
+	AND
 	EQUALITY
 	COMPARISON
 	TERM
@@ -64,15 +66,15 @@ func NewParser(input string, debug bool) *Parser {
 		token.NUMBER:  {p.parseNumberLiteral, nil, NONE},
 		token.STRING:  {p.parseStringLiteral, nil, NONE},
 		token.ASSIGN:  {nil, p.parseAssignmentExpression, ASSIGNMENT},
-		token.PLUS:    {nil, p.parseInfixExpression, TERM},
-		token.MINUS:   {p.parsePrefixExpression, p.parseInfixExpression, TERM},
-		token.BANG:    {p.parsePrefixExpression, nil, NONE},
-		token.STAR:    {nil, p.parseInfixExpression, FACTOR},
-		token.SLASH:   {nil, p.parseInfixExpression, FACTOR},
-		token.LT:      {nil, p.parseInfixExpression, COMPARISON},
-		token.GT:      {nil, p.parseInfixExpression, COMPARISON},
-		token.EQ:      {nil, p.parseInfixExpression, EQUALITY},
-		token.NOT_EQ:  {nil, p.parseInfixExpression, EQUALITY},
+		token.PLUS:    {nil, p.parseBinaryExpression, TERM},
+		token.MINUS:   {p.parseUnaryExpression, p.parseBinaryExpression, TERM},
+		token.BANG:    {p.parseUnaryExpression, nil, NONE},
+		token.STAR:    {nil, p.parseBinaryExpression, FACTOR},
+		token.SLASH:   {nil, p.parseBinaryExpression, FACTOR},
+		token.LT:      {nil, p.parseBinaryExpression, COMPARISON},
+		token.GT:      {nil, p.parseBinaryExpression, COMPARISON},
+		token.EQ:      {nil, p.parseBinaryExpression, EQUALITY},
+		token.NOT_EQ:  {nil, p.parseBinaryExpression, EQUALITY},
 		token.COMMA:   {nil, nil, NONE},
 		token.SEMI:    {nil, nil, NONE},
 		token.COLON:   {nil, nil, NONE},
@@ -90,6 +92,9 @@ func NewParser(input string, debug bool) *Parser {
 		token.ELSE:    {nil, nil, NONE},
 		token.RETURN:  {nil, nil, NONE},
 		token.NULL:    {p.parseNullLiteral, nil, NONE},
+		token.OR:      {nil, p.parseLogicalExpression, OR},
+		token.AND:     {nil, p.parseLogicalExpression, AND},
+		token.MACRO:   {nil, nil, NONE},
 	}
 
 	return p
@@ -126,6 +131,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseLetStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.MACRO:
+		return p.parseMacroStatement()
 	case token.SEMI:
 		p.skip(token.SEMI)
 		return nil
@@ -219,6 +226,36 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	return block
 }
 
+func (p *Parser) parseMacroStatement() *ast.MacroStatement {
+	if p.debug {
+		defer un(trace("ParseMacroStatement"))
+	}
+
+	stmt := &ast.MacroStatement{Token: p.tok}
+	if !p.expect(token.IDENT) {
+		return nil
+	}
+
+	stmt.Name = p.parseIdentifier().(*ast.Identifier)
+	if !p.expect(token.LPAREN) {
+		return nil
+	}
+
+	stmt.Parameters = p.parseIdentifierList(token.RPAREN)
+
+	if !p.expect(token.RPAREN) {
+		return nil
+	}
+
+	if !p.expect(token.LBRACE) {
+		return nil
+	}
+
+	stmt.Body = p.parseBlockStatement()
+
+	return stmt
+}
+
 func (p *Parser) parseExpression(rightPrecedence precedence) ast.Expression {
 	if p.debug {
 		defer un(trace("ParseExpression"))
@@ -255,12 +292,12 @@ func (p *Parser) parseGroupingExpression() ast.Expression {
 	return expr
 }
 
-func (p *Parser) parsePrefixExpression() ast.Expression {
+func (p *Parser) parseUnaryExpression() ast.Expression {
 	if p.debug {
-		defer un(trace("ParsePrefixExpression"))
+		defer un(trace("ParseUnaryExpression"))
 	}
 
-	expr := &ast.PrefixExpression{
+	expr := &ast.UnaryExpression{
 		Token:    p.tok,
 		Operator: p.tok.Literal,
 	}
@@ -272,12 +309,31 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expr
 }
 
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
 	if p.debug {
-		defer un(trace("ParseInfixExpression"))
+		defer un(trace("ParseBinaryExpression"))
 	}
 
-	expr := &ast.InfixExpression{
+	expr := &ast.BinaryExpression{
+		Token:    p.tok,
+		Left:     left,
+		Operator: p.tok.Literal,
+	}
+	rule := p.getRule(p.tok.Type)
+
+	p.next()
+
+	expr.Right = p.parseExpression(rule.Precedence)
+
+	return expr
+}
+
+func (p *Parser) parseLogicalExpression(left ast.Expression) ast.Expression {
+	if p.debug {
+		defer un(trace("ParseLogicalExpression"))
+	}
+
+	expr := &ast.BinaryExpression{
 		Token:    p.tok,
 		Left:     left,
 		Operator: p.tok.Literal,
@@ -296,7 +352,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 		defer un(trace("ParseIfExpression"))
 	}
 
-	expr := &ast.IfExpression{Token: p.tok}
+	expr := &ast.ConditionalExpression{Token: p.tok}
 	if !p.expect(token.LPAREN) {
 		return nil
 	}

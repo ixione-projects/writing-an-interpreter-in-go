@@ -3,6 +3,8 @@ package object
 type Environment struct {
 	Values    map[string]Object
 	Enclosing *Environment
+
+	Quoting bool
 }
 
 func NewEnvironment(enclosing *Environment) *Environment {
@@ -22,4 +24,8 @@ func (env *Environment) Get(ident string) (Object, bool) {
 
 func (env *Environment) Set(ident string, value Object) {
 	env.Values[ident] = value
+}
+
+func (env *Environment) Length() int {
+	return len(env.Values)
 }

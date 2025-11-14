@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/evaluator"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/parser"
@@ -29,6 +30,7 @@ const PROMPT = "> "
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment(nil)
+	macros := object.NewEnvironment(nil)
 
 	for {
 		fmt.Fprintf(out, PROMPT)
@@ -41,6 +43,10 @@ func Start(in io.Reader, out io.Writer) {
 		p := parser.NewParser(line, false)
 
 		program := p.ParseProgram()
+
+		expanded := evaluator.DefineMacros(program, macros)
+		expanded = evaluator.ExpandMacros(expanded, macros).(*ast.Program)
+
 		if len(p.Errors()) != 0 {
 			io.WriteString(out, MONKEY_FACE)
 			io.WriteString(out, "Woops! We ran into some monkey business here!\n")
@@ -51,9 +57,9 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		value, error := evaluator.Evaluate(program, env)
+		value, error := evaluator.Evaluate(expanded, env)
 		if error != nil {
-			io.WriteString(out, "Error: "+error.(*object.Error).Message+"\n")
+			io.WriteString(out, error.Inspect()+"\n")
 			continue
 		}
 

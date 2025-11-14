@@ -176,6 +176,26 @@ func TestNextToken(t *testing.T) {
 				{Type: token.EOF, Literal: ""},
 			},
 		},
+		{
+			input: `macro add(x, y) { x + y; };`,
+			tokens: []token.Token{
+				{Type: token.MACRO, Literal: "macro"},
+				{Type: token.IDENT, Literal: "add"},
+				{Type: token.LPAREN, Literal: "("},
+				{Type: token.IDENT, Literal: "x"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.IDENT, Literal: "y"},
+				{Type: token.RPAREN, Literal: ")"},
+				{Type: token.LBRACE, Literal: "{"},
+				{Type: token.IDENT, Literal: "x"},
+				{Type: token.PLUS, Literal: "+"},
+				{Type: token.IDENT, Literal: "y"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.RBRACE, Literal: "}"},
+				{Type: token.SEMI, Literal: ";"},
+				{Type: token.EOF, Literal: ""},
+			},
+		},
 	}
 
 	for i, test := range tests {

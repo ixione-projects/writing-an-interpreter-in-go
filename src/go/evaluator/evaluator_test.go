@@ -24,6 +24,7 @@ func (s StringTest) object()   {}
 func (a ArrayTest) object()    {}
 func (h HashTest) object()     {}
 func (n NullTest) object()     {}
+func (q QuoteTest) object()    {}
 
 type HashableTest interface {
 	ObjectTest
@@ -61,6 +62,10 @@ type HashTest struct {
 }
 
 type NullTest struct{}
+
+type QuoteTest struct {
+	Node string
+}
 
 type ErrorTest struct {
 	Message string
@@ -670,9 +675,76 @@ var suites = []struct {
 			},
 		},
 	},
+	{
+		name: "TestEvalatePreprocessorExpression",
+		tests: []EvaluatorTest{
+			{
+				input:  `quote(5)`,
+				object: QuoteTest{"5"},
+			},
+			{
+				input:  `quote(5 + 8)`,
+				object: QuoteTest{"(5+8)"},
+			},
+			{
+				input:  `quote(foobar)`,
+				object: QuoteTest{"foobar"},
+			},
+			{
+				input:  `quote(foobar + barfoo)`,
+				object: QuoteTest{"(foobar+barfoo)"},
+			},
+			{
+				input:  `quote(unquote(4))`,
+				object: QuoteTest{"4"},
+			},
+			{
+				input:  `quote(unquote(4 + 4))`,
+				object: QuoteTest{"8"},
+			},
+			{
+				input:  `quote(8 + unquote(4 + 4))`,
+				object: QuoteTest{"(8+8)"},
+			},
+			{
+				input:  `quote(unquote(4 + 4) + 8)`,
+				object: QuoteTest{"(8+8)"},
+			},
+			{
+				input: `
+					let foobar = 8;
+					quote(foobar);`,
+				object: QuoteTest{"foobar"},
+			},
+			{
+				input: `
+					let foobar = 8;
+					quote(unquote(foobar));`,
+				object: QuoteTest{"8"},
+			},
+			{
+				input:  `quote(unquote(true));`,
+				object: QuoteTest{"true"},
+			},
+			{
+				input:  `quote(unquote(true == false));`,
+				object: QuoteTest{"false"},
+			},
+			{
+				input:  `quote(unquote(quote(4 + 4)))`,
+				object: QuoteTest{"(4+4)"},
+			},
+			{
+				input: `
+					let infix = quote(4 + 4);
+					quote(unquote(4 + 4) + unquote(infix));`,
+				object: QuoteTest{"(8+(4+4))"},
+			},
+		},
+	},
 }
 
-func TestEvaluateNumber(t *testing.T) {
+func TestEvaluate(t *testing.T) {
 	for _, suite := range suites {
 		t.Run(suite.name, func(t *testing.T) {
 			for i, test := range suite.tests {
@@ -740,6 +812,10 @@ func testObject(tb testing.TB, i int, expected ObjectTest, actual object.Object)
 		}
 	case NullTest:
 		if !testNull(tb, i, actual) {
+			return false
+		}
+	case QuoteTest:
+		if !testQuote(tb, i, expected, actual) {
 			return false
 		}
 	default:
@@ -879,6 +955,21 @@ func testError(tb testing.TB, i int, expected ErrorTest, actual object.Interrupt
 
 	if expected.Message != value.Message {
 		tb.Errorf("test[%d] - *object.Error.Message ==> expected: <%s> but was: <%s>", i, expected.Message, value.Message)
+		return false
+	}
+
+	return true
+}
+
+func testQuote(tb testing.TB, i int, expected QuoteTest, actual object.Object) bool {
+	quote, ok := actual.(*object.Quote)
+	if !ok {
+		tb.Errorf("test[%d] - actual.(*object.Quote) ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Quote{}, actual)
+		return false
+	}
+
+	if expected.Node != quote.Node.String() {
+		tb.Errorf("test[%d] - quote.Node.String() ==> expected: <%s> but was: <%s>", i, expected.Node, quote.Node.String())
 		return false
 	}
 
