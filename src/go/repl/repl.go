@@ -44,8 +44,9 @@ func Start(in io.Reader, out io.Writer) {
 
 		program := p.ParseProgram()
 
-		expanded := evaluator.DefineMacros(program, macros)
-		expanded = evaluator.ExpandMacros(expanded, macros).(*ast.Program)
+		expanded := evaluator.ExpandMacros(
+			evaluator.DefineMacros(program, macros), macros,
+		).(*ast.Program)
 
 		if len(p.Errors()) != 0 {
 			io.WriteString(out, MONKEY_FACE)

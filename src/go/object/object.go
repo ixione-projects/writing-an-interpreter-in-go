@@ -50,11 +50,11 @@ type BuiltinCall func(ctx *Environment, args ...Object) (Object, Interruption)
 
 type Builtin interface {
 	Object
-	builtin()
+	builtinObject()
 }
 
-func (bf *BuiltinFunction) builtin() {}
-func (bm *BuiltinMacro) builtin()    {}
+func (bf *BuiltinFunction) builtinObject() {}
+func (bm *BuiltinMacro) builtinObject()    {}
 
 type BuiltinFunction struct {
 	Fn BuiltinCall
@@ -77,7 +77,7 @@ func (bm *BuiltinMacro) Type() ObjectType {
 }
 
 func (bm *BuiltinMacro) Inspect() string {
-	return "<fn builtin>"
+	return "<macro builtin>"
 }
 
 type Macro struct {
@@ -266,9 +266,10 @@ func (e *Error) Inspect() string {
 	return "ERROR: " + e.Message
 }
 
-var objects = map[ObjectType]string{
+var objects = [...]string{
 	FUNCTION: "FUNCTION",
 	BUILTIN:  "BUILTIN",
+	MACRO:    "MACRO",
 	NUMBER:   "INTEGER",
 	BOOLEAN:  "BOOLEAN",
 	STRING:   "STRING",
@@ -282,7 +283,7 @@ func (ot ObjectType) String() string {
 	return objects[ot]
 }
 
-var interruptions = map[InterruptionType]string{
+var interruptions = [...]string{
 	RETURN_VALUE: "RETURN_VALUE",
 	ERROR:        "ERROR",
 }

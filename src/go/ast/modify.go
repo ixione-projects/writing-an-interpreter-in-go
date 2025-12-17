@@ -13,18 +13,16 @@ func Modify(node Node, modifier func(Node) Node) Node {
 			node.Statements[i] = modified
 		}
 	case *LetDeclaration:
-		modified, ok := Modify(node.Name, modifier).(*Identifier)
+		mname, ok := Modify(node.Name, modifier).(*Identifier)
 		if !ok {
-			return toErrorNode(&Identifier{}, modified)
+			return toErrorNode(&Identifier{}, mname)
 		}
-		node.Name = modified
-		if node.Value != nil {
-			modified, ok := Modify(node.Value, modifier).(Expression)
-			if !ok {
-				return toErrorNode(Expression(nil), modified)
-			}
-			node.Value = modified
+		node.Name = mname
+		mvalue, ok := Modify(node.Value, modifier).(Expression)
+		if !ok {
+			return toErrorNode(Expression(nil), mvalue)
 		}
+		node.Value = mvalue
 	case *ReturnStatement:
 		if node.ReturnValue != nil {
 			modified, ok := Modify(node.ReturnValue, modifier).(Expression)

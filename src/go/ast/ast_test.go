@@ -3,10 +3,13 @@ package ast
 import (
 	"testing"
 
+	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/assert"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/token"
 )
 
 func TestString(t *testing.T) {
+	r := assert.GetTestReporter(t)
+
 	program := &Program{
 		Statements: []Statement{
 			&LetDeclaration{
@@ -23,7 +26,5 @@ func TestString(t *testing.T) {
 		},
 	}
 
-	if "let ident=value;" != program.String() {
-		t.Errorf("String() ==> expected: <%s> but was: <%s>", "let ident=value;", program.String())
-	}
+	assert.EqualsWithMessage("let ident=value;", program.String(), "program.String()", r)
 }

@@ -11,15 +11,14 @@ import (
 )
 
 type Parser struct {
+	l       *lexer.Lexer
+	trace   bool
 	current int
 
-	l      *lexer.Lexer
+	tok    token.Token
 	errors []string
-	debug  bool
 
-	tok token.Token
-
-	rules map[token.TokenType]parseRule
+	rules map[token.TokenType]ParserRule
 }
 
 type precedence int
@@ -40,26 +39,26 @@ const (
 )
 
 type (
-	prefixParseFn func() ast.Expression
-	infixParseFn  func(ast.Expression) ast.Expression
+	PrefixParseFn func() ast.Expression
+	InfixParseFn  func(ast.Expression) ast.Expression
 )
 
-type parseRule struct {
-	PrefixParseFn prefixParseFn
-	InfixParseFn  infixParseFn
+type ParserRule struct {
+	PrefixParseFn PrefixParseFn
+	InfixParseFn  InfixParseFn
 	Precedence    precedence
 }
 
-func NewParser(input string, debug bool) *Parser {
+func NewParser(input string, trace bool) *Parser {
 	l := lexer.NewLexer(input)
 	p := &Parser{
 		l:      l,
 		errors: []string{},
-		debug:  debug,
+		trace:  trace,
 	}
 	p.tok = p.peek0()
 
-	p.rules = map[token.TokenType]parseRule{
+	p.rules = map[token.TokenType]ParserRule{
 		token.ILLEGAL: {p.reportIllegalToken, nil, NONE},
 		token.EOF:     {nil, nil, NONE},
 		token.IDENT:   {p.parseIdentifier, nil, NONE},
@@ -101,7 +100,7 @@ func NewParser(input string, debug bool) *Parser {
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseProgram"))
 	}
 
@@ -122,7 +121,7 @@ func (p *Parser) Errors() []string {
 }
 
 func (p *Parser) parseStatement() ast.Statement {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseStatement"))
 	}
 
@@ -142,7 +141,7 @@ func (p *Parser) parseStatement() ast.Statement {
 }
 
 func (p *Parser) parseLetStatement() *ast.LetDeclaration {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseLetStatement"))
 	}
 
@@ -168,7 +167,7 @@ func (p *Parser) parseLetStatement() *ast.LetDeclaration {
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseReturnStatement"))
 	}
 
@@ -186,7 +185,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseExpressionStatement"))
 	}
 
@@ -201,7 +200,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 }
 
 func (p *Parser) parseBlockStatement() *ast.BlockStatement {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseBlockStatement"))
 	}
 
@@ -227,7 +226,7 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 }
 
 func (p *Parser) parseMacroStatement() *ast.MacroStatement {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseMacroStatement"))
 	}
 
@@ -257,7 +256,7 @@ func (p *Parser) parseMacroStatement() *ast.MacroStatement {
 }
 
 func (p *Parser) parseExpression(rightPrecedence precedence) ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseExpression"))
 	}
 
@@ -293,7 +292,7 @@ func (p *Parser) parseGroupingExpression() ast.Expression {
 }
 
 func (p *Parser) parseUnaryExpression() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseUnaryExpression"))
 	}
 
@@ -310,7 +309,7 @@ func (p *Parser) parseUnaryExpression() ast.Expression {
 }
 
 func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseBinaryExpression"))
 	}
 
@@ -329,7 +328,7 @@ func (p *Parser) parseBinaryExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseLogicalExpression(left ast.Expression) ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseLogicalExpression"))
 	}
 
@@ -348,7 +347,7 @@ func (p *Parser) parseLogicalExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseIfExpression() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseIfExpression"))
 	}
 
@@ -383,7 +382,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 }
 
 func (p *Parser) parseFunctionLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseFunctionLiteral"))
 	}
 
@@ -408,7 +407,7 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 }
 
 func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseCallExpression"))
 	}
 
@@ -426,7 +425,7 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseSubscriptExpression(left ast.Expression) ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseSubscriptExpression"))
 	}
 
@@ -452,7 +451,7 @@ var lvalues = []ast.NodeType{
 }
 
 func (p *Parser) parseAssignmentExpression(left ast.Expression) ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseAssignmentExpression"))
 	}
 
@@ -474,7 +473,7 @@ func (p *Parser) parseAssignmentExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseIdentifier"))
 	}
 
@@ -482,7 +481,7 @@ func (p *Parser) parseIdentifier() ast.Expression {
 }
 
 func (p *Parser) parseNumberLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseNumberLiteral"))
 	}
 
@@ -495,7 +494,7 @@ func (p *Parser) parseNumberLiteral() ast.Expression {
 }
 
 func (p *Parser) parseStringLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseStringLiteral"))
 	}
 
@@ -506,7 +505,7 @@ func (p *Parser) parseStringLiteral() ast.Expression {
 }
 
 func (p *Parser) parseBooleanLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseBooleanLiteral"))
 	}
 
@@ -514,7 +513,7 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 }
 
 func (p *Parser) parseArrayLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseArrayLiteral"))
 	}
 
@@ -529,7 +528,7 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 }
 
 func (p *Parser) parseHashLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseHashLiteral"))
 	}
 
@@ -581,7 +580,7 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 }
 
 func (p *Parser) parseNullLiteral() ast.Expression {
-	if p.debug {
+	if p.trace {
 		defer un(trace("ParseNullLiteral"))
 	}
 
@@ -692,7 +691,7 @@ func (p *Parser) next() {
 	p.tok = p.l.Token(p.current)
 }
 
-func (p *Parser) getRule(ttype token.TokenType) parseRule {
+func (p *Parser) getRule(ttype token.TokenType) ParserRule {
 	return p.rules[ttype]
 }
 

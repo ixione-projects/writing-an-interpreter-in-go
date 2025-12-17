@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/assert"
 	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
 )
 
 type ParserTest struct {
 	input   string
 	errors  []string
-	debug   bool
+	trace   bool
 	program ProgramTest
 }
 
@@ -152,6 +153,8 @@ type HashLiteralTest struct {
 }
 
 func TestLetStatement(t *testing.T) {
+	r := assert.GetTestReporter(t)
+
 	tests := []ParserTest{
 		{
 			input: `
@@ -189,11 +192,13 @@ func TestLetStatement(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		testParser(t, i, test)
+		testParser(t, r, i, test)
 	}
 }
 
 func TestReturnStatement(t *testing.T) {
+	r := assert.GetTestReporter(t)
+
 	tests := []ParserTest{
 		{
 			input: `
@@ -220,11 +225,13 @@ func TestReturnStatement(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		testParser(t, i, test)
+		testParser(t, r, i, test)
 	}
 }
 
 func TestExpressionStatement(t *testing.T) {
+	r := assert.GetTestReporter(t)
+
 	suites := []struct {
 		name  string
 		tests []ParserTest
@@ -1439,13 +1446,15 @@ func TestExpressionStatement(t *testing.T) {
 	for _, suite := range suites {
 		t.Run(suite.name, func(t *testing.T) {
 			for i, test := range suite.tests {
-				testParser(t, i, test)
+				testParser(t, r, i, test)
 			}
 		})
 	}
 }
 
 func TestMacroStatement(t *testing.T) {
+	r := assert.GetTestReporter(t)
+
 	tests := []ParserTest{
 		{
 			input: `macro add(x, y) { x + y; };`,
@@ -1476,12 +1485,14 @@ func TestMacroStatement(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		testParser(t, i, test)
+		testParser(t, r, i, test)
 	}
 }
 
-func testParser(t *testing.T, i int, test ParserTest) {
-	p := NewParser(test.input, test.debug)
+func testParser(t *testing.T, r assert.Reporter, i int, test ParserTest) {
+	t.Helper()
+
+	p := NewParser(test.input, test.trace)
 	program := p.ParseProgram()
 
 	if len(test.errors) != len(p.Errors()) {
@@ -1505,11 +1516,11 @@ func testParser(t *testing.T, i int, test ParserTest) {
 	}
 
 	if len(test.program.Statements) > 0 {
-		testProgram(t, i, test.program, program)
+		testProgram(t, r, i, test.program, program)
 	}
 }
 
-func testProgram(t *testing.T, i int, expected ProgramTest, actual *ast.Program) {
+func testProgram(t *testing.T, r assert.Reporter, i int, expected ProgramTest, actual *ast.Program) {
 	if actual == nil {
 		t.Fatalf("test[%d] - ParseProgram() ==> expected: not <%#v>", i, actual)
 	}
@@ -1519,32 +1530,32 @@ func testProgram(t *testing.T, i int, expected ProgramTest, actual *ast.Program)
 	}
 
 	for j, stmt := range expected.Statements {
-		if !testStatement(t, i, j, stmt, actual.Statements[j]) {
+		if !testStatement(t, r, i, j, stmt, actual.Statements[j]) {
 			t.Fatalf("test[%d][%d] - %s", i, j, actual.Statements[j].String())
 		}
 	}
 }
 
-func testStatement(t *testing.T, i, j int, expected StatementTest, actual ast.Statement) bool {
+func testStatement(t *testing.T, r assert.Reporter, i, j int, expected StatementTest, actual ast.Statement) bool {
 	switch expected := expected.(type) {
 	case LetDeclarationTest:
-		if !testLetDeclaration(t, i, j, expected, actual) {
+		if !testLetDeclaration(t, r, i, j, expected, actual) {
 			return false
 		}
 	case ReturnStatementTest:
-		if !testReturnStatement(t, i, j, expected, actual) {
+		if !testReturnStatement(t, r, i, j, expected, actual) {
 			return false
 		}
 	case ExpressionStatementTest:
-		if !testExpressionStatement(t, i, j, expected, actual) {
+		if !testExpressionStatement(t, r, i, j, expected, actual) {
 			return false
 		}
 	case BlockStatementTest:
-		if !testBlockStatement(t, i, j, expected, actual) {
+		if !testBlockStatement(t, r, i, j, expected, actual) {
 			return false
 		}
 	case MacroStatementTest:
-		if !testMacroStatement(t, i, j, expected, actual) {
+		if !testMacroStatement(t, r, i, j, expected, actual) {
 			return false
 		}
 	default:
@@ -1553,7 +1564,7 @@ func testStatement(t *testing.T, i, j int, expected StatementTest, actual ast.St
 	return true
 }
 
-func testLetDeclaration(t *testing.T, i, j int, expected LetDeclarationTest, actual ast.Statement) bool {
+func testLetDeclaration(t *testing.T, r assert.Reporter, i, j int, expected LetDeclarationTest, actual ast.Statement) bool {
 	if "let" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.LetStatement.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "let", actual.TokenLiteral())
 		return false
@@ -1565,11 +1576,11 @@ func testLetDeclaration(t *testing.T, i, j int, expected LetDeclarationTest, act
 		return false
 	}
 
-	if !testIdentifier(t, i, j, expected.Name, stmt.Name) {
+	if !testIdentifier(t, r, i, j, expected.Name, stmt.Name) {
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Value, stmt.Value) {
+	if !testExpression(t, r, i, j, expected.Value, stmt.Value) {
 		return false
 	}
 
@@ -1581,7 +1592,7 @@ func testLetDeclaration(t *testing.T, i, j int, expected LetDeclarationTest, act
 	return true
 }
 
-func testReturnStatement(t *testing.T, i, j int, expected ReturnStatementTest, actual ast.Statement) bool {
+func testReturnStatement(t *testing.T, r assert.Reporter, i, j int, expected ReturnStatementTest, actual ast.Statement) bool {
 	if "return" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.ReturnStatement.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "return", actual.TokenLiteral())
 		return false
@@ -1593,7 +1604,7 @@ func testReturnStatement(t *testing.T, i, j int, expected ReturnStatementTest, a
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.ReturnValue, stmt.ReturnValue) {
+	if !testExpression(t, r, i, j, expected.ReturnValue, stmt.ReturnValue) {
 		return false
 	}
 
@@ -1605,14 +1616,14 @@ func testReturnStatement(t *testing.T, i, j int, expected ReturnStatementTest, a
 	return true
 }
 
-func testExpressionStatement(t *testing.T, i, j int, expected ExpressionStatementTest, actual ast.Statement) bool {
+func testExpressionStatement(t *testing.T, r assert.Reporter, i, j int, expected ExpressionStatementTest, actual ast.Statement) bool {
 	stmt, ok := actual.(*ast.ExpressionStatement)
 	if !ok {
 		t.Errorf("test[%d][%d] - actual.(*ast.ExpressionStatement) ==> unexpected type, expected: <%T> but was: <%T>", i, j, &ast.ExpressionStatement{}, actual)
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Expression, stmt.Expression) {
+	if !testExpression(t, r, i, j, expected.Expression, stmt.Expression) {
 		return false
 	}
 
@@ -1624,7 +1635,7 @@ func testExpressionStatement(t *testing.T, i, j int, expected ExpressionStatemen
 	return true
 }
 
-func testBlockStatement(t *testing.T, i, j int, expected BlockStatementTest, actual ast.Statement) bool {
+func testBlockStatement(t *testing.T, r assert.Reporter, i, j int, expected BlockStatementTest, actual ast.Statement) bool {
 	if "{" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.BlockStatement.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "{", actual.TokenLiteral())
 		return false
@@ -1642,7 +1653,7 @@ func testBlockStatement(t *testing.T, i, j int, expected BlockStatementTest, act
 	}
 
 	for k, stmt := range expected.Statements {
-		if !testStatement(t, i, j, stmt, block.Statements[k]) {
+		if !testStatement(t, r, i, j, stmt, block.Statements[k]) {
 			return false
 		}
 	}
@@ -1650,7 +1661,7 @@ func testBlockStatement(t *testing.T, i, j int, expected BlockStatementTest, act
 	return true
 }
 
-func testMacroStatement(t *testing.T, i, j int, expected MacroStatementTest, actual ast.Statement) bool {
+func testMacroStatement(t *testing.T, r assert.Reporter, i, j int, expected MacroStatementTest, actual ast.Statement) bool {
 	if "macro" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.FunctionLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "macro", actual.TokenLiteral())
 		return false
@@ -1662,7 +1673,7 @@ func testMacroStatement(t *testing.T, i, j int, expected MacroStatementTest, act
 		return false
 	}
 
-	if !testIdentifier(t, i, j, expected.Name, macro.Name) {
+	if !testIdentifier(t, r, i, j, expected.Name, macro.Name) {
 		return false
 	}
 
@@ -1672,70 +1683,70 @@ func testMacroStatement(t *testing.T, i, j int, expected MacroStatementTest, act
 	}
 
 	for k, parameter := range expected.Parameters {
-		if !testIdentifier(t, i, j, parameter, macro.Parameters[k]) {
+		if !testIdentifier(t, r, i, j, parameter, macro.Parameters[k]) {
 			return false
 		}
 	}
 
-	if !testBlockStatement(t, i, j, expected.Body, macro.Body) {
+	if !testBlockStatement(t, r, i, j, expected.Body, macro.Body) {
 		return false
 	}
 
 	return true
 }
 
-func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.Expression) bool {
+func testExpression(t *testing.T, r assert.Reporter, i, j int, expected ExpressionTest, actual ast.Expression) bool {
 	switch expected := expected.(type) {
 	case UnaryExpressionTest:
-		if !testUnaryExpression(t, i, j, expected, actual) {
+		if !testUnaryExpression(t, r, i, j, expected, actual) {
 			return false
 		}
 	case BinaryExpressionTest:
-		if !testBinaryExpression(t, i, j, expected, actual) {
+		if !testBinaryExpression(t, r, i, j, expected, actual) {
 			return false
 		}
 	case ConditionalExpressionTest:
-		if !testConditionalExpression(t, i, j, expected, actual) {
+		if !testConditionalExpression(t, r, i, j, expected, actual) {
 			return false
 		}
 	case FunctionLiteralTest:
-		if !testFunctionLiteral(t, i, j, expected, actual) {
+		if !testFunctionLiteral(t, r, i, j, expected, actual) {
 			return false
 		}
 	case CallExpressionTest:
-		if !testCallExpression(t, i, j, expected, actual) {
+		if !testCallExpression(t, r, i, j, expected, actual) {
 			return false
 		}
 	case AssignmentExpressionTest:
-		if !testAssignmentExpression(t, i, j, expected, actual) {
+		if !testAssignmentExpression(t, r, i, j, expected, actual) {
 			return false
 		}
 	case SubscriptExpressionTest:
-		if !testSubscriptExpression(t, i, j, expected, actual) {
+		if !testSubscriptExpression(t, r, i, j, expected, actual) {
 			return false
 		}
 	case IdentifierTest:
-		if !testIdentifier(t, i, j, expected, actual) {
+		if !testIdentifier(t, r, i, j, expected, actual) {
 			return false
 		}
 	case NumberLiteralTest:
-		if !testNumberLiteral(t, i, j, expected, actual) {
+		if !testNumberLiteral(t, r, i, j, expected, actual) {
 			return false
 		}
 	case BooleanLiteralTest:
-		if !testBooleanLiteral(t, i, j, expected, actual) {
+		if !testBooleanLiteral(t, r, i, j, expected, actual) {
 			return false
 		}
 	case StringLiteralTest:
-		if !testStringLiteral(t, i, j, expected, actual) {
+		if !testStringLiteral(t, r, i, j, expected, actual) {
 			return false
 		}
 	case ArrayLiteralTest:
-		if !testArrayLiteral(t, i, j, expected, actual) {
+		if !testArrayLiteral(t, r, i, j, expected, actual) {
 			return false
 		}
 	case HashLiteralTest:
-		if !testHashLiteral(t, i, j, expected, actual) {
+		if !testHashLiteral(t, r, i, j, expected, actual) {
 			return false
 		}
 	default:
@@ -1744,7 +1755,7 @@ func testExpression(t *testing.T, i, j int, expected ExpressionTest, actual ast.
 	return true
 }
 
-func testUnaryExpression(t *testing.T, i, j int, expected UnaryExpressionTest, actual ast.Expression) bool {
+func testUnaryExpression(t *testing.T, r assert.Reporter, i, j int, expected UnaryExpressionTest, actual ast.Expression) bool {
 	if expected.Operator != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.PrefixExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, expected.Operator, actual.TokenLiteral())
 		return false
@@ -1756,14 +1767,14 @@ func testUnaryExpression(t *testing.T, i, j int, expected UnaryExpressionTest, a
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Right, expr.Right) {
+	if !testExpression(t, r, i, j, expected.Right, expr.Right) {
 		return false
 	}
 
 	return true
 }
 
-func testBinaryExpression(t *testing.T, i, j int, expected BinaryExpressionTest, actual ast.Expression) bool {
+func testBinaryExpression(t *testing.T, r assert.Reporter, i, j int, expected BinaryExpressionTest, actual ast.Expression) bool {
 	if expected.Operator != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.InfixExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, expected.Operator, actual.TokenLiteral())
 		return false
@@ -1775,18 +1786,18 @@ func testBinaryExpression(t *testing.T, i, j int, expected BinaryExpressionTest,
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Left, expr.Left) {
+	if !testExpression(t, r, i, j, expected.Left, expr.Left) {
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Right, expr.Right) {
+	if !testExpression(t, r, i, j, expected.Right, expr.Right) {
 		return false
 	}
 
 	return true
 }
 
-func testConditionalExpression(t *testing.T, i, j int, expected ConditionalExpressionTest, actual ast.Expression) bool {
+func testConditionalExpression(t *testing.T, r assert.Reporter, i, j int, expected ConditionalExpressionTest, actual ast.Expression) bool {
 	if "if" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.IfExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "if", actual.TokenLiteral())
 		return false
@@ -1798,22 +1809,22 @@ func testConditionalExpression(t *testing.T, i, j int, expected ConditionalExpre
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Condition, expr.Condition) {
+	if !testExpression(t, r, i, j, expected.Condition, expr.Condition) {
 		return false
 	}
 
-	if !testBlockStatement(t, i, j, expected.Consequence, expr.Consequence) {
+	if !testBlockStatement(t, r, i, j, expected.Consequence, expr.Consequence) {
 		return false
 	}
 
-	if len(expected.Alternative.Statements) > 0 && !testBlockStatement(t, i, j, expected.Alternative, expr.Alternative) {
+	if len(expected.Alternative.Statements) > 0 && !testBlockStatement(t, r, i, j, expected.Alternative, expr.Alternative) {
 		return false
 	}
 
 	return true
 }
 
-func testFunctionLiteral(t *testing.T, i, j int, expected FunctionLiteralTest, actual ast.Expression) bool {
+func testFunctionLiteral(t *testing.T, r assert.Reporter, i, j int, expected FunctionLiteralTest, actual ast.Expression) bool {
 	if "fn" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.FunctionLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "fn", actual.TokenLiteral())
 		return false
@@ -1831,19 +1842,19 @@ func testFunctionLiteral(t *testing.T, i, j int, expected FunctionLiteralTest, a
 	}
 
 	for k, parameter := range expected.Parameters {
-		if !testIdentifier(t, i, j, parameter, fn.Parameters[k]) {
+		if !testIdentifier(t, r, i, j, parameter, fn.Parameters[k]) {
 			return false
 		}
 	}
 
-	if !testBlockStatement(t, i, j, expected.Body, fn.Body) {
+	if !testBlockStatement(t, r, i, j, expected.Body, fn.Body) {
 		return false
 	}
 
 	return true
 }
 
-func testCallExpression(t *testing.T, i, j int, expected CallExpressionTest, actual ast.Expression) bool {
+func testCallExpression(t *testing.T, r assert.Reporter, i, j int, expected CallExpressionTest, actual ast.Expression) bool {
 	if "(" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.CallExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "(", actual.TokenLiteral())
 		return false
@@ -1855,7 +1866,7 @@ func testCallExpression(t *testing.T, i, j int, expected CallExpressionTest, act
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Callee, call.Callee) {
+	if !testExpression(t, r, i, j, expected.Callee, call.Callee) {
 		return false
 	}
 
@@ -1865,7 +1876,7 @@ func testCallExpression(t *testing.T, i, j int, expected CallExpressionTest, act
 	}
 
 	for k, argument := range expected.Arguments {
-		if !testExpression(t, i, j, argument, call.Arguments[k]) {
+		if !testExpression(t, r, i, j, argument, call.Arguments[k]) {
 			return false
 		}
 	}
@@ -1873,7 +1884,7 @@ func testCallExpression(t *testing.T, i, j int, expected CallExpressionTest, act
 	return true
 }
 
-func testAssignmentExpression(t *testing.T, i, j int, expected AssignmentExpressionTest, actual ast.Expression) bool {
+func testAssignmentExpression(t *testing.T, r assert.Reporter, i, j int, expected AssignmentExpressionTest, actual ast.Expression) bool {
 	if "=" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.AssignmentExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "=", actual.TokenLiteral())
 		return false
@@ -1885,18 +1896,18 @@ func testAssignmentExpression(t *testing.T, i, j int, expected AssignmentExpress
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.LValue, expr.LValue) {
+	if !testExpression(t, r, i, j, expected.LValue, expr.LValue) {
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.RValue, expr.RValue) {
+	if !testExpression(t, r, i, j, expected.RValue, expr.RValue) {
 		return false
 	}
 
 	return true
 }
 
-func testSubscriptExpression(t *testing.T, i, j int, expected SubscriptExpressionTest, actual ast.Expression) bool {
+func testSubscriptExpression(t *testing.T, r assert.Reporter, i, j int, expected SubscriptExpressionTest, actual ast.Expression) bool {
 	if "[" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.SubscriptExpression.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "[", actual.TokenLiteral())
 		return false
@@ -1908,18 +1919,18 @@ func testSubscriptExpression(t *testing.T, i, j int, expected SubscriptExpressio
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Base, expr.Base) {
+	if !testExpression(t, r, i, j, expected.Base, expr.Base) {
 		return false
 	}
 
-	if !testExpression(t, i, j, expected.Subscript, expr.Subscript) {
+	if !testExpression(t, r, i, j, expected.Subscript, expr.Subscript) {
 		return false
 	}
 
 	return true
 }
 
-func testIdentifier(t *testing.T, i, j int, expected IdentifierTest, actual ast.Expression) bool {
+func testIdentifier(t *testing.T, r assert.Reporter, i, j int, expected IdentifierTest, actual ast.Expression) bool {
 	if string(expected) != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.Identifier.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, string(expected), actual.TokenLiteral())
 		return false
@@ -1939,9 +1950,9 @@ func testIdentifier(t *testing.T, i, j int, expected IdentifierTest, actual ast.
 	return true
 }
 
-func testNumberLiteral(t *testing.T, i, j int, expected NumberLiteralTest, actual ast.Expression) bool {
-	if fmt.Sprintf("%.0f", float64(expected)) != actual.TokenLiteral() {
-		t.Errorf("test[%d][%d] - *ast.NumberLiteral.TokenLiteral() ==> expected: <%f> but was: <%s>", i, j, float64(expected), actual.TokenLiteral())
+func testNumberLiteral(t *testing.T, r assert.Reporter, i, j int, expected NumberLiteralTest, actual ast.Expression) bool {
+	if fmt.Sprintf("%g", expected) != actual.TokenLiteral() {
+		t.Errorf("test[%d][%d] - *ast.NumberLiteral.TokenLiteral ==> expected: <%s> but was: <%s>", i, j, fmt.Sprintf("%g", expected), actual.TokenLiteral())
 		return false
 	}
 
@@ -1959,7 +1970,7 @@ func testNumberLiteral(t *testing.T, i, j int, expected NumberLiteralTest, actua
 	return true
 }
 
-func testBooleanLiteral(t *testing.T, i, j int, expected BooleanLiteralTest, actual ast.Expression) bool {
+func testBooleanLiteral(t *testing.T, r assert.Reporter, i, j int, expected BooleanLiteralTest, actual ast.Expression) bool {
 	if fmt.Sprintf("%t", bool(expected)) != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.BooleanLiteral.TokenLiteral() ==> expected: <%t> but was: <%s>", i, j, bool(expected), actual.TokenLiteral())
 		return false
@@ -1979,7 +1990,7 @@ func testBooleanLiteral(t *testing.T, i, j int, expected BooleanLiteralTest, act
 	return true
 }
 
-func testStringLiteral(t *testing.T, i, j int, expected StringLiteralTest, actual ast.Expression) bool {
+func testStringLiteral(t *testing.T, r assert.Reporter, i, j int, expected StringLiteralTest, actual ast.Expression) bool {
 	if "\""+string(expected)+"\"" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.StringLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "\""+string(expected)+"\"", actual.TokenLiteral())
 		return false
@@ -1999,7 +2010,7 @@ func testStringLiteral(t *testing.T, i, j int, expected StringLiteralTest, actua
 	return true
 }
 
-func testArrayLiteral(t *testing.T, i, j int, expected ArrayLiteralTest, actual ast.Expression) bool {
+func testArrayLiteral(t *testing.T, r assert.Reporter, i, j int, expected ArrayLiteralTest, actual ast.Expression) bool {
 	if "[" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.ArrayLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "[", actual.TokenLiteral())
 		return false
@@ -2017,7 +2028,7 @@ func testArrayLiteral(t *testing.T, i, j int, expected ArrayLiteralTest, actual 
 	}
 
 	for k, element := range expected.Elements {
-		if !testExpression(t, i, j, element, array.Elements[k]) {
+		if !testExpression(t, r, i, j, element, array.Elements[k]) {
 			return false
 		}
 	}
@@ -2025,7 +2036,7 @@ func testArrayLiteral(t *testing.T, i, j int, expected ArrayLiteralTest, actual 
 	return true
 }
 
-func testHashLiteral(t *testing.T, i, j int, expected HashLiteralTest, actual ast.Expression) bool {
+func testHashLiteral(t *testing.T, r assert.Reporter, i, j int, expected HashLiteralTest, actual ast.Expression) bool {
 	if "{" != actual.TokenLiteral() {
 		t.Errorf("test[%d][%d] - *ast.HashLiteral.TokenLiteral() ==> expected: <%s> but was: <%s>", i, j, "{", actual.TokenLiteral())
 		return false
@@ -2043,11 +2054,11 @@ func testHashLiteral(t *testing.T, i, j int, expected HashLiteralTest, actual as
 	}
 
 	for k, key := range expected.Keys {
-		if !testExpression(t, i, j, key, hash.Keys[k]) {
+		if !testExpression(t, r, i, j, key, hash.Keys[k]) {
 			return false
 		}
 
-		if !testExpression(t, i, j, expected.Pairs[key], hash.Pairs[hash.Keys[k]]) {
+		if !testExpression(t, r, i, j, expected.Pairs[key], hash.Pairs[hash.Keys[k]]) {
 			return false
 		}
 	}
